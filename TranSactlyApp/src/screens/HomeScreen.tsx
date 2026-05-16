@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, StatusBar,
   TouchableOpacity, PermissionsAndroid, Platform,
@@ -16,52 +16,8 @@ import { PieChart, BarChart } from 'react-native-chart-kit';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const CARD_WIDTH = SCREEN_W * 0.75;
-const CARD_SPACING = Space.sm;
-const SPARK_HEIGHTS = [18, 28, 22, 36, 30, 42, 34];
-const SPENDING_CATEGORIES = [
-  { name: 'Food & Dining', amount: 12400, percent: 28, color: '#FF6B6B', icon: 'silverware-fork-knife' },
-  { name: 'Travel', amount: 8900, percent: 20, color: '#4ECDC4', icon: 'car-outline' },
-  { name: 'Entertainment', amount: 6200, percent: 14, color: '#45B7D1', icon: 'gamepad-variant-outline' },
-  { name: 'Utilities', amount: 5100, percent: 12, color: '#FFA502', icon: 'lightning-bolt' },
-  { name: 'Shopping', amount: 4800, percent: 11, color: '#9C27B0', icon: 'shopping-outline' },
-  { name: 'Other', amount: 3600, percent: 8, color: '#95E1D3', icon: 'dots-horizontal' },
-];
-const EARNING_DATA = [
-  { month: 'Jan', earnings: 95, spending: 65 },
-  { month: 'Feb', earnings: 98, spending: 72 },
-  { month: 'Mar', earnings: 105, spending: 68 },
-  { month: 'Apr', earnings: 102, spending: 75 },
-  { month: 'May', earnings: 110, spending: 82 },
-];
-
 type PermState = 'idle' | 'checking' | 'granted' | 'denied' | 'unavailable';
 type ComparisonPeriod = 'month' | 'sixMonths' | 'year';
-
-interface InsightObject {
-  icon: string;
-  text: string;
-  change: string;
-  changePercent: number;
-  category?: string;
-  type: 'warn' | 'alert' | 'info';
-  cta: string;
-}
-
-interface SpendingCategory {
-  name: string;
-  amount: number;
-  percent: number;
-  color: string;
-  icon: string;
-}
-
-interface EarningData {
-  month: string;
-  earnings: number;
-  spending: number;
-}
 
 const requestSmsPermission = async (): Promise<PermState> => {
   if (Platform.OS !== 'android') return 'unavailable';
@@ -104,14 +60,6 @@ const AIPulseDot: React.FC = () => {
   );
 };
 
-// SMS Data Source Badge Component
-const SMSSourceBadge: React.FC = () => (
-  <View style={styles.smsBadge}>
-    <MaterialCommunityIcons name="message-text-outline" size={10} color={Colors.textMuted} />
-    <Text style={styles.smsBadgeText}>Detected from SMS</Text>
-  </View>
-);
-
 const AIInsightCard: React.FC<{
   icon: string;
   text: string;
@@ -150,7 +98,6 @@ const AIInsightCard: React.FC<{
         <Text style={[styles.insightMeta, { color: Colors.textMuted }]}>vs {periodLabel}</Text>
       </View>
       <Text style={[styles.insightCta, { color: c.text }]}>{cta}  →</Text>
-      <SMSSourceBadge />
     </View>
   );
 };
@@ -169,22 +116,24 @@ const MiniSparkBar: React.FC<{ heights: number[]; activeIndex: number }> = ({ he
   </View>
 );
 
-const SpendingBreakdownCard: React.FC<{ categories: SpendingCategory[] }> = ({ categories }) => {
-  const pieData = useMemo(() => 
-    categories.map(cat => ({
-      name: cat.name,
-      amount: cat.amount,
-      color: cat.color,
-      legendFontColor: Colors.textSecondary,
-      legendFontSize: 10,
-    })),
-    [categories]
-  );
+interface SpendingCategory {
+  name: string;
+  amount: number;
+  percent: number;
+  color: string;
+  icon: string;
+}
 
-  const totalAmount = useMemo(() => 
-    categories.reduce((sum, cat) => sum + cat.amount, 0),
-    [categories]
-  );
+const SpendingBreakdownCard: React.FC<{ categories: SpendingCategory[] }> = ({ categories }) => {
+  const pieData = categories.map(cat => ({
+    name: cat.name,
+    amount: cat.amount,
+    color: cat.color,
+    legendFontColor: Colors.textSecondary,
+    legendFontSize: 10,
+  }));
+
+  const totalAmount = categories.reduce((sum, cat) => sum + cat.amount, 0);
 
   return (
     <View style={styles.chartSection}>
@@ -194,24 +143,7 @@ const SpendingBreakdownCard: React.FC<{ categories: SpendingCategory[] }> = ({ c
       </View>
       
       <View style={styles.pieChartWrapper}>
-        <View style={styles.pieChartContainer}>
-          <PieChart 
-            data={pieData} 
-            width={SCREEN_W - 60} 
-            height={220} 
-            accessor="amount" 
-            backgroundColor="transparent" 
-            paddingLeft="0" 
-            center={[10, 0]} 
-            hasLegend={false} 
-            chartConfig={{ 
-              backgroundColor: 'transparent', 
-              backgroundGradientFrom: 'transparent', 
-              backgroundGradientTo: 'transparent', 
-              color: (opacity = 1) => `rgba(255,255,255,${opacity})`, 
-            }} 
-          />
-        </View>
+<View style={styles.pieChartContainer}> <PieChart data={pieData} width={SCREEN_W - 60} height={220} accessor="amount" backgroundColor="transparent" paddingLeft="0" center={[10, 0]} hasLegend={false} chartConfig={{ backgroundColor: 'transparent', backgroundGradientFrom: 'transparent', backgroundGradientTo: 'transparent', color: (opacity = 1) => `rgba(255,255,255,${opacity})`, }} /> </View>
         
         {/* Custom Legend Below Chart */}
         <View style={styles.customLegend}>
@@ -258,8 +190,14 @@ const SpendingBreakdownCard: React.FC<{ categories: SpendingCategory[] }> = ({ c
   );
 };
 
+interface EarningData {
+  month: string;
+  earnings: number;
+  spending: number;
+}
+
 const EarningVsSpendingCard: React.FC<{ data: EarningData[] }> = ({ data }) => {
-  const chartData = useMemo(() => ({
+  const chartData = {
     labels: data.map(d => d.month),
     datasets: [
       {
@@ -273,7 +211,7 @@ const EarningVsSpendingCard: React.FC<{ data: EarningData[] }> = ({ data }) => {
         strokeWidth: 2,
       },
     ],
-  }), [data]);
+  };
 
   return (
     <View style={styles.chartSection}>
@@ -332,9 +270,6 @@ const ComparisonPeriodSelector: React.FC<{
         key={period}
         style={[styles.periodBtn, selected === period && styles.periodBtnActive]}
         onPress={() => onSelect(period)}
-        accessibilityLabel={`Filter by ${period === 'month' ? 'This Month' : period === 'sixMonths' ? '6 Months' : 'This Year'}`}
-        accessibilityRole="radio"
-        accessibilityState={{ selected: selected === period }}
       >
         <Text style={[styles.periodBtnText, selected === period && styles.periodBtnTextActive]}>
           {period === 'month' ? 'This Month' : period === 'sixMonths' ? '6 Months' : 'This Year'}
@@ -413,13 +348,7 @@ const EmptyState: React.FC<{ permState: PermState; onRequest: () => void }> = ({
           : 'Grant SMS permission so SmartSpend AI can detect your bank transactions automatically.'}
       </Text>
       {!isUnavailable && (
-        <TouchableOpacity 
-          style={emptyStyles.btn} 
-          onPress={onRequest} 
-          activeOpacity={0.85}
-          accessibilityLabel={isDenied ? 'Open device settings' : 'Grant SMS permission'}
-          accessibilityRole="button"
-        >
+        <TouchableOpacity style={emptyStyles.btn} onPress={onRequest} activeOpacity={0.85}>
           <Text style={emptyStyles.btnText}>
             {isDenied ? 'OPEN SETTINGS' : 'GIVE MESSAGE PERMISSION'}
           </Text>
@@ -441,7 +370,7 @@ const emptyStyles = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const getInsightsForPeriod = (period: ComparisonPeriod): InsightObject[] => {
+const getInsightsForPeriod = (period: ComparisonPeriod) => {
   const insights = {
     month: [
       { icon: 'trending-up', text: 'Food spending increased 18% this week — Swiggy & Zomato orders spiking.', change: '₹2,340↑', changePercent: 18, category: 'FOOD & DINING', type: 'warn' as const, cta: 'VIEW BREAKDOWN' },
@@ -462,6 +391,25 @@ const getInsightsForPeriod = (period: ComparisonPeriod): InsightObject[] => {
   };
   return insights[period];
 };
+
+const SPARK_HEIGHTS = [18, 28, 22, 36, 30, 42, 34];
+
+const SPENDING_CATEGORIES: SpendingCategory[] = [
+  { name: 'Food & Dining', amount: 12400, percent: 28, color: '#FF6B6B', icon: 'silverware-fork-knife' },
+  { name: 'Travel', amount: 8900, percent: 20, color: '#4ECDC4', icon: 'car-outline' },
+  { name: 'Entertainment', amount: 6200, percent: 14, color: '#45B7D1', icon: 'gamepad-variant-outline' },
+  { name: 'Utilities', amount: 5100, percent: 12, color: '#FFA502', icon: 'lightning-bolt' },
+  { name: 'Shopping', amount: 4800, percent: 11, color: '#9C27B0', icon: 'shopping-outline' },
+  { name: 'Other', amount: 3600, percent: 8, color: '#95E1D3', icon: 'dots-horizontal' },
+];
+
+const EARNING_DATA: EarningData[] = [
+  { month: 'Jan', earnings: 95, spending: 65 },
+  { month: 'Feb', earnings: 98, spending: 72 },
+  { month: 'Mar', earnings: 105, spending: 68 },
+  { month: 'Apr', earnings: 102, spending: 75 },
+  { month: 'May', earnings: 110, spending: 82 },
+];
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -496,8 +444,7 @@ const HomeScreen: React.FC = () => {
     setPermState(result);
   }, [permState]);
 
-  // Memoize insights to prevent unnecessary recalculation
-  const currentInsights = useMemo(() => getInsightsForPeriod(comparisonPeriod), [comparisonPeriod]);
+  const currentInsights = getInsightsForPeriod(comparisonPeriod);
 
   const renderHeader = () => (
     <View>
@@ -516,13 +463,9 @@ const HomeScreen: React.FC = () => {
           </View>
         </View>
         <View style={styles.topRight}>
-          <TouchableOpacity 
-            style={styles.iconBtn}
-            accessibilityLabel="View notifications"
-            accessibilityRole="button"
-          >
+          <TouchableOpacity style={styles.iconBtn}>
             <MaterialCommunityIcons name="bell-outline" size={18} color={Colors.textPrimary} />
-            <View style={styles.notifBadge} accessible={false} />
+            <View style={styles.notifBadge} />
           </TouchableOpacity>
         </View>
       </View>
@@ -567,7 +510,6 @@ const HomeScreen: React.FC = () => {
         </View>
 
         <MiniSparkBar heights={SPARK_HEIGHTS} activeIndex={6} />
-        <SMSSourceBadge />
       </Animated.View>
 
       {/* Comparison Period Selector */}
@@ -584,10 +526,7 @@ const HomeScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={CARD_WIDTH + CARD_SPACING}
-        decelerationRate="fast"
         contentContainerStyle={styles.insightScroll}
-        accessibilityLabel="AI-generated financial insights carousel"
       >
         {currentInsights.map((ins, i) => (
           <AIInsightCard
@@ -616,7 +555,7 @@ const HomeScreen: React.FC = () => {
       {permState === 'granted' && transactions.length > 0 && (
         <View style={[styles.sectionHeader, { marginTop: Space.xl }]}>
           <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
-          <TouchableOpacity accessibilityLabel="View all transactions">
+          <TouchableOpacity>
             <Text style={styles.sectionAction}>VIEW ALL</Text>
           </TouchableOpacity>
         </View>
@@ -669,20 +608,10 @@ const HomeScreen: React.FC = () => {
         }
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        updateCellsBatchingPeriod={50}
-        removeClippedSubviews={true}
       />
 
       {/* Floating AI Assistant Button */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        activeOpacity={0.85} 
-        onPress={() => navigation.navigate('Chat')}
-        accessibilityLabel="Open AI chat assistant"
-        accessibilityRole="button"
-      >
+      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => navigation.navigate('Chat')} >
         <MaterialCommunityIcons name="sparkles" size={14} color={Colors.textInverse} />
         <Text style={styles.fabText}>ASK AI</Text>
       </TouchableOpacity>
@@ -716,10 +645,6 @@ const styles = StyleSheet.create({
   greetingName: { ...Font.displayXL, color: Colors.textPrimary, fontSize: 30, fontWeight: '300', marginTop: 2 },
   greetingDesc: { ...Font.bodyS, color: Colors.textSecondary, marginTop: 4 },
 
-  // SMS Badge
-  smsBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Space.sm, paddingHorizontal: Space.sm, paddingVertical: 4, borderRadius: Radius.full, backgroundColor: Colors.bgElevated, borderWidth: 0.5, borderColor: Colors.border, alignSelf: 'flex-start' },
-  smsBadgeText: { ...Font.labelS, fontSize: 9, color: Colors.textMuted, fontWeight: '500' },
-
   // Hero card
   heroCard: { backgroundColor: Colors.bgCard, borderRadius: Radius.xl, borderWidth: 0.5, borderColor: Colors.border, padding: Space.xl, marginBottom: Space.md },
   heroLabel: { ...Font.labelS, color: Colors.textMuted, marginBottom: Space.md },
@@ -748,14 +673,14 @@ const styles = StyleSheet.create({
   periodBtnTextActive: { color: Colors.textInverse },
 
   // Section
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Space.md, marginTop: Space.lg },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Space.md },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
   sectionTitle: { ...Font.labelS, color: Colors.textMuted },
   sectionAction: { ...Font.labelS, color: Colors.gold },
 
   // Insight cards
-  insightScroll: { paddingRight: Space.sm, gap: CARD_SPACING, marginBottom: Space.md },
-  insightCard: { width: CARD_WIDTH, backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 0.5, padding: Space.lg, gap: Space.sm },
+  insightScroll: { paddingRight: Space.sm, gap: Space.sm, marginBottom: Space.md },
+  insightCard: { width: SCREEN_W * 0.7, backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 0.5, padding: Space.lg, gap: Space.sm },
   insightCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   insightIconBox: { width: 32, height: 32, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   insightConfPill: { paddingHorizontal: Space.sm, paddingVertical: 3, borderRadius: Radius.full, borderWidth: 0.5 },
@@ -767,13 +692,13 @@ const styles = StyleSheet.create({
   insightCta: { ...Font.labelS, fontSize: 10, letterSpacing: 0.8 },
 
   // Charts
-  chartSection: { backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 0.5, borderColor: Colors.border, padding: Space.xl, marginBottom: Space.md, marginTop: Space.lg },
+  chartSection: { backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 0.5, borderColor: Colors.border, padding: Space.xl, marginBottom: Space.md },
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Space.lg },
   chartTitle: { ...Font.labelS, color: Colors.textMuted },
   
   // Pie Chart Wrapper
   pieChartWrapper: { alignItems: 'center', marginBottom: Space.lg },
-  pieChartContainer: { width: '100%', alignItems: 'center', justifyContent: 'center', marginLeft: 130 },
+  pieChartContainer: { width: '100%', alignItems: 'center', justifyContent: 'center',marginLeft:130 },
   
   // Custom Legend
   customLegend: { width: '100%', gap: Space.sm, marginBottom: Space.lg, paddingTop: Space.md, borderTopWidth: 0.5, borderTopColor: Colors.border },
@@ -815,7 +740,7 @@ const styles = StyleSheet.create({
   categoryPercent: { ...Font.labelS, color: Colors.textSecondary, fontSize: 11, minWidth: 30, textAlign: 'right' },
 
   // Security
-  securityCard: { backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 0.5, borderColor: 'rgba(61,203,127,0.2)', padding: Space.xl, marginBottom: Space.md, marginTop: Space.lg },
+  securityCard: { backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 0.5, borderColor: 'rgba(61,203,127,0.2)', padding: Space.xl, marginBottom: Space.md },
   securityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Space.lg },
   securityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
   securityGreenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#3DCB7F' },
