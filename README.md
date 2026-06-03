@@ -8,7 +8,6 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-316192?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
 [![Gemini AI](https://img.shields.io/badge/Gemini_AI-Powered-4285F4?style=for-the-badge&logo=google)](https://deepmind.google/technologies/gemini/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 > **Automatically reads your banking SMS → extracts transactions → categorizes spending → and lets you chat with AI about your money.**
 
@@ -439,42 +438,10 @@ EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP:8000
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Here's how to get started:
-
-```bash
-# 1. Fork the repository
-# 2. Create your feature branch
-git checkout -b feature/your-feature-name
-
-# 3. Make your changes and commit
-git commit -m "feat: add your feature description"
-
-# 4. Push to your fork
-git push origin feature/your-feature-name
-
-# 5. Open a Pull Request
-```
-
-### Contribution Guidelines
-- Follow existing code style and naming conventions
-- Write clear commit messages using [Conventional Commits](https://www.conventionalcommits.org/)
-- Add comments for complex logic, especially in the categorization engine
-- Test your changes on a physical Android device before submitting a PR
-- Update this README if you add new features or change setup steps
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
 
 <div align="center">
 
-Built with ❤️ by [Laukik Waikar](https://github.com/yourusername)
+Built with ❤️ by [Laukik Waikar](https://github.com/LAU29004)
 
 ⭐ Star this repo if you found it useful!
 
