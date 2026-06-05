@@ -1,0 +1,1 @@
+AMOUNT_REGEX = r"(?:rs\.?|inr)\s?(\d+(?:\.\d+)?)"

@@ -1,5 +1,24 @@
-node_modules/
-.env
-dist/
-build/
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Next.js
 .next/
+out/
+
+# Node
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db

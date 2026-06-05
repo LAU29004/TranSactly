@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState } from "react";
 import { Transaction } from "../types/Transaction";
-import { mockTransactions } from "../data/mockData";
-
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import { useEffect } from 'react';
+const TRANSACTION_CACHE_KEY = 'TRANSACTION_CACHE';
 type ContextType = {
   transactions: Transaction[];
   setTransactions: (data: Transaction[]) => void;
@@ -10,7 +11,46 @@ type ContextType = {
 const TransactionContext = createContext<ContextType | null>(null);
 
 export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+useEffect(() => {
+  const loadCachedTransactions = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(
+        TRANSACTION_CACHE_KEY,
+      );
+
+      if (cached) {
+        setTransactions(JSON.parse(cached));
+      }
+    } catch (e) {
+      console.log(
+        'TRANSACTION CACHE LOAD ERROR:',
+        e,
+      );
+    }
+  };
+
+  loadCachedTransactions();
+}, []);
+
+useEffect(() => {
+  const saveTransactions = async () => {
+    try {
+      await AsyncStorage.setItem(
+        TRANSACTION_CACHE_KEY,
+        JSON.stringify(transactions),
+      );
+    } catch (e) {
+      console.log(
+        'TRANSACTION CACHE SAVE ERROR:',
+        e,
+      );
+    }
+  };
+
+  saveTransactions();
+}, [transactions]);
 
   return (
     <TransactionContext.Provider value={{ transactions, setTransactions }}>
