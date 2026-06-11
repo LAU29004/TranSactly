@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,9 @@ import FilterScreen from '../screens/FilterScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { Colors, Radius, Font } from '../theme';
+import LoginScreen from '../screens/LoginScreen';
+import SplashScreen from '../screens/SplashScreen';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -19,13 +22,15 @@ export type RootTabParamList = {
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const Stack = createNativeStackNavigator();
 const NAVIGATION_STATE_KEY = 'NAVIGATION_STATE';
+
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const TAB_CONTENT_HEIGHT = 56; // icon + label + padding, excludes insets.bottom
-const ICON_WRAP_SIZE = 28; // fixed icon canvas
-const PILL_H = 34; // highlight pill height
-const PILL_W = 52; // highlight pill width
+const TAB_CONTENT_HEIGHT = 56;
+const ICON_WRAP_SIZE = 28;
+const PILL_H = 34;
+const PILL_W = 52;
 const PILL_RADIUS = PILL_H / 2;
 
 // ─── AnimatedTabItem ───────────────────────────────────────────────────────────
@@ -41,55 +46,254 @@ const AnimatedTabItem: React.FC<TabItemProps> = ({
   label,
   children,
 }) => {
-  const scale = useRef(new Animated.Value(1)).current;
-  const bgOpacity = useRef(new Animated.Value(0)).current;
-  const labelScale = useRef(new Animated.Value(1)).current;
+  // Icon bounce on focus
+  const iconScale = useRef(new Animated.Value(1)).current;
+  const iconTranslateY = useRef(new Animated.Value(0)).current;
+
+  // Pill: opacity + width expand
+  const pillOpacity = useRef(new Animated.Value(0)).current;
+  const pillScaleX = useRef(new Animated.Value(0.4)).current;
+  const pillScaleY = useRef(new Animated.Value(0.7)).current;
+
+  // Label: fade + slide up
+  const labelOpacity = useRef(new Animated.Value(focused ? 1 : 0.45)).current;
+  const labelTranslateY = useRef(new Animated.Value(0)).current;
+  const labelScale = useRef(new Animated.Value(focused ? 1.05 : 1)).current;
+
+  // Glow behind icon when focused
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const glowScale = useRef(new Animated.Value(0.6)).current;
+
+  const prevFocused = useRef(focused);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: focused ? 1.06 : 1,
-        useNativeDriver: true,
-        tension: 200,
+    const wasFocused = prevFocused.current;
+    prevFocused.current = focused;
+
+    if (focused) {
+      // ── Entering focused state ──
+
+      // Icon: quick bounce up then settle
+      Animated.sequence([
+        Animated.timing(iconTranslateY, {
+          toValue: -4,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.spring(iconTranslateY, {
+          toValue: 0,
+          tension: 280,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Icon scale: pop
+      Animated.sequence([
+        Animated.timing(iconScale, {
+          toValue: 1.22,
+          duration: 110,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.spring(iconScale, {
+          toValue: 1.06,
+          tension: 260,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Pill: expand from center with elastic spring
+      Animated.parallel([
+        Animated.timing(pillOpacity, {
+          toValue: 1,
+          duration: 160,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(pillScaleX, {
+          toValue: 1,
+          tension: 180,
+          friction: 12,
+          useNativeDriver: true,
+        }),
+        Animated.spring(pillScaleY, {
+          toValue: 1,
+          tension: 200,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Label: slide up subtly and brighten
+      Animated.parallel([
+        Animated.timing(labelOpacity, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(labelTranslateY, {
+          toValue: -1,
+          tension: 220,
+          friction: 12,
+          useNativeDriver: true,
+        }),
+        Animated.spring(labelScale, {
+          toValue: 1.08,
+          tension: 200,
+          friction: 12,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Glow: bloom then settle
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(glowOpacity, {
+            toValue: 0.28,
+            duration: 200,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.spring(glowScale, {
+            toValue: 1.2,
+            tension: 140,
+            friction: 10,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(glowOpacity, {
+            toValue: 0.12,
+            duration: 400,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.spring(glowScale, {
+            toValue: 1,
+            tension: 120,
+            friction: 14,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    } else {
+      // ── Leaving focused state ──
+
+      // Icon: shrink and settle
+      Animated.spring(iconScale, {
+        toValue: 1,
+        tension: 220,
         friction: 12,
-      }),
-      Animated.timing(bgOpacity, {
-        toValue: focused ? 1 : 0,
-        duration: 200,
         useNativeDriver: true,
-      }),
-      Animated.spring(labelScale, {
-        toValue: focused ? 1.05 : 1,
+      }).start();
+
+      Animated.spring(iconTranslateY, {
+        toValue: 0,
+        tension: 220,
+        friction: 14,
         useNativeDriver: true,
-        tension: 200,
-        friction: 12,
-      }),
-    ]).start();
+      }).start();
+
+      // Pill: collapse inward
+      Animated.parallel([
+        Animated.timing(pillOpacity, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pillScaleX, {
+          toValue: 0.4,
+          duration: 200,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pillScaleY, {
+          toValue: 0.7,
+          duration: 180,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Label: fade and settle
+      Animated.parallel([
+        Animated.timing(labelOpacity, {
+          toValue: 0.45,
+          duration: 160,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.spring(labelTranslateY, {
+          toValue: 0,
+          tension: 220,
+          friction: 14,
+          useNativeDriver: true,
+        }),
+        Animated.spring(labelScale, {
+          toValue: 1,
+          tension: 220,
+          friction: 12,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Glow: fade out
+      Animated.timing(glowOpacity, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    }
   }, [focused]);
 
   return (
-    <Animated.View style={[tab.cell, { transform: [{ scale }] }]}>
-      {/* Pill highlight */}
+    <Animated.View style={[tab.cell, { transform: [{ scale: iconScale }] }]}>
+      {/* Radial glow behind the pill */}
       <Animated.View
         style={[
-          tab.pill,
+          tab.glow,
           {
-            opacity: bgOpacity,
-            backgroundColor: Colors.goldMuted,
-            borderColor: Colors.goldBorder,
+            opacity: glowOpacity,
+            transform: [{ scale: glowScale }],
           },
         ]}
       />
 
-      {/* Icon */}
-      <View style={tab.iconWrap}>{children}</View>
+      {/* Pill highlight — expands from center */}
+      <Animated.View
+        style={[
+          tab.pill,
+          {
+            opacity: pillOpacity,
+            backgroundColor: Colors.goldMuted,
+            borderColor: Colors.goldBorder,
+            transform: [{ scaleX: pillScaleX }, { scaleY: pillScaleY }],
+          },
+        ]}
+      />
 
-      {/* Label */}
+      {/* Icon with vertical float */}
+      <Animated.View
+        style={[tab.iconWrap, { transform: [{ translateY: iconTranslateY }] }]}
+      >
+        {children}
+      </Animated.View>
+
+      {/* Label with slide + fade */}
       <Animated.Text
         style={[
           tab.label,
           focused && tab.labelActive,
-          { transform: [{ scale: labelScale }] },
+          {
+            opacity: labelOpacity,
+            transform: [{ translateY: labelTranslateY }, { scale: labelScale }],
+          },
         ]}
       >
         {label}
@@ -99,7 +303,6 @@ const AnimatedTabItem: React.FC<TabItemProps> = ({
 };
 
 const tab = StyleSheet.create({
-  // Fixed-size cell — every tab occupies the same space so icons are centred
   cell: {
     width: PILL_W + 8,
     alignItems: 'center',
@@ -107,7 +310,15 @@ const tab = StyleSheet.create({
     gap: 3,
     paddingTop: 2,
   },
-  // Pill sits behind icon + label, precisely sized
+  // Soft radial glow that blooms on focus
+  glow: {
+    position: 'absolute',
+    width: PILL_W + 16,
+    height: PILL_H + 16,
+    borderRadius: (PILL_H + 16) / 2,
+    backgroundColor: Colors.gold,
+    top: -8,
+  },
   pill: {
     position: 'absolute',
     width: PILL_W,
@@ -135,7 +346,6 @@ const tab = StyleSheet.create({
 });
 
 // ─── Icons ─────────────────────────────────────────────────────────────────────
-// Every icon is drawn to fit within a 20×20 optical box inside the 28×28 wrap.
 
 const HomeIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
   const c = focused ? Colors.tabActive : Colors.tabInactive;
@@ -149,7 +359,6 @@ const HomeIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
           height: 20,
         }}
       >
-        {/* Roof triangle */}
         <View
           style={{
             width: 0,
@@ -162,7 +371,6 @@ const HomeIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
             borderBottomColor: c,
           }}
         />
-        {/* Body */}
         <View
           style={{
             width: 14,
@@ -174,7 +382,6 @@ const HomeIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
             alignItems: 'center',
           }}
         >
-          {/* Door */}
           <View
             style={{
               position: 'absolute',
@@ -224,24 +431,40 @@ const FilterIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
 const ChatIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
   const c = focused ? Colors.tabActive : Colors.tabInactive;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!focused) {
       pulseAnim.setValue(1);
+      pulseOpacity.setValue(0);
       return;
     }
+
+    // Ripple pulse: scale out + fade out repeatedly
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.35,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 750,
-          useNativeDriver: true,
-        }),
+        Animated.parallel([
+          Animated.timing(pulseAnim, {
+            toValue: 2.2,
+            duration: 900,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.timing(pulseOpacity, {
+              toValue: 0.55,
+              duration: 120,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseOpacity, {
+              toValue: 0,
+              duration: 780,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+        Animated.delay(400),
       ]),
     );
     loop.start();
@@ -250,11 +473,6 @@ const ChatIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
 
   return (
     <AnimatedTabItem focused={focused} label="AI CHAT">
-      {/*
-       * Outer container is exactly ICON_WRAP_SIZE × ICON_WRAP_SIZE.
-       * The AI dot is positioned inside this box so it never clips outside
-       * the AnimatedTabItem pill.
-       */}
       <View
         style={{
           width: 20,
@@ -306,22 +524,38 @@ const ChatIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
           }}
         />
 
-        {/* AI online dot — sits within the 20×20 box, top-right */}
+        {/* AI online dot with ripple */}
         {focused && (
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: -1,
-              right: -1,
-              width: 7,
-              height: 7,
-              borderRadius: 3.5,
-              backgroundColor: '#3DCB7F',
-              borderWidth: 1.5,
-              borderColor: Colors.tabBg,
-              transform: [{ scale: pulseAnim }],
-            }}
-          />
+          <>
+            {/* Ripple ring */}
+            <Animated.View
+              style={{
+                position: 'absolute',
+                top: -1,
+                right: -1,
+                width: 7,
+                height: 7,
+                borderRadius: 3.5,
+                backgroundColor: '#3DCB7F',
+                opacity: pulseOpacity,
+                transform: [{ scale: pulseAnim }],
+              }}
+            />
+            {/* Solid dot */}
+            <View
+              style={{
+                position: 'absolute',
+                top: -1,
+                right: -1,
+                width: 7,
+                height: 7,
+                borderRadius: 3.5,
+                backgroundColor: '#3DCB7F',
+                borderWidth: 1.5,
+                borderColor: Colors.tabBg,
+              }}
+            />
+          </>
         )}
       </View>
     </AnimatedTabItem>
@@ -340,7 +574,6 @@ const ProfileIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
           justifyContent: 'flex-end',
         }}
       >
-        {/* Head */}
         <View
           style={{
             width: 10,
@@ -350,7 +583,6 @@ const ProfileIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
             marginBottom: 2,
           }}
         />
-        {/* Shoulders — semi-ellipse */}
         <View
           style={{
             width: 18,
@@ -369,18 +601,73 @@ const ProfileIcon: React.FC<{ focused: boolean }> = ({ focused }) => {
 
 const TabBackground: React.FC = () => (
   <View style={nav.tabBg}>
-    {/* Gold-tinted top separator */}
     <View style={nav.topLine} />
-    {/* Subtle centre glint */}
     <View style={nav.glint} />
   </View>
 );
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
 
+const MainTabs = () => {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: Colors.tabBg,
+          borderTopWidth: 0,
+          height: tabBarHeight,
+          paddingTop: 8,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarShowLabel: false,
+        tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: Colors.tabActive,
+        tabBarInactiveTintColor: Colors.tabInactive,
+        tabBarBackground: () => <TabBackground />,
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <HomeIcon focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Filter"
+        component={FilterScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <FilterIcon focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <ChatIcon focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <ProfileIcon focused={focused} />,
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
 const AppNavigator: React.FC = () => {
   const [initialState, setInitialState] = useState<any>();
   const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
     const restoreState = async () => {
       try {
@@ -396,13 +683,11 @@ const AppNavigator: React.FC = () => {
     };
     restoreState();
   }, []);
-  const insets = useSafeAreaInsets();
 
+  const insets = useSafeAreaInsets();
   const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
 
-  if (!isReady) {
-    return null;
-  }
+  if (!isReady) return null;
 
   return (
     <NavigationContainer
@@ -418,57 +703,17 @@ const AppNavigator: React.FC = () => {
         }
       }}
     >
-      <Tab.Navigator
+      <Stack.Navigator
         screenOptions={{
           headerShown: false,
-
-          tabBarStyle: {
-            backgroundColor: Colors.tabBg,
-            borderTopWidth: 0, // handled by TabBackground
-            height: tabBarHeight,
-            paddingTop: 8,
-
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-
-          tabBarShowLabel: false, // labels rendered inside AnimatedTabItem
-          tabBarHideOnKeyboard: true, // hide on Android keyboard open
-          tabBarActiveTintColor: Colors.tabActive,
-          tabBarInactiveTintColor: Colors.tabInactive,
-          tabBarBackground: () => <TabBackground />,
         }}
       >
-        <Tab.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{
-            tabBarIcon: ({ focused }) => <HomeIcon focused={focused} />,
-          }}
-        />
-        <Tab.Screen
-          name="Filter"
-          component={FilterScreen}
-          options={{
-            tabBarIcon: ({ focused }) => <FilterIcon focused={focused} />,
-          }}
-        />
-        <Tab.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{
-            tabBarIcon: ({ focused }) => <ChatIcon focused={focused} />,
-          }}
-        />
-        <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{
-            tabBarIcon: ({ focused }) => <ProfileIcon focused={focused} />,
-          }}
-        />
-      </Tab.Navigator>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+
+        <Stack.Screen name="Login" component={LoginScreen} />
+
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };
@@ -476,11 +721,6 @@ const AppNavigator: React.FC = () => {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const nav = StyleSheet.create({
-  /*
-   * FIX 7: absoluteFillObject ensures the background fills the entire tab bar
-   * region, including the bottom safe-area padding. Without this the bg colour
-   * only covers the icon/label area and leaves a raw surface strip at the bottom.
-   */
   tabBg: {
     position: 'absolute',
     top: 0,

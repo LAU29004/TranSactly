@@ -18,6 +18,14 @@ from app.schemas.base_response import (
     SuccessResponse,
 )
 
+from fastapi import Depends
+
+from app.models.user import User
+
+from app.services.auth.dependencies import (
+    get_current_user,
+)
+
 router = APIRouter()
 
 @router.post(
@@ -32,6 +40,11 @@ async def analyze_sms(
     request: Request,
 
     data: SMSRequest,
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
 ):
 
     unique_messages = []
@@ -42,7 +55,8 @@ async def analyze_sms(
         seen.add(sms.message)
         unique_messages.append(sms)
     results = process_transactions(
-        unique_messages
+    unique_messages,
+    current_user.id,
     )
 
     return SuccessResponse(

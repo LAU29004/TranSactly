@@ -32,45 +32,73 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // ─── Theme ─────────────────────────────────────────────────────────────────────
+// Improved: richer dark surfaces, warmer gold palette, better contrast ratios,
+// more distinct surface layers so depth reads clearly on OLED & LCD alike.
+const suggestionIcons: Record<string, string> = {
+  'Top Merchants': 'store-outline',
+
+  'Category Breakdown': 'chart-pie',
+
+  'Savings Summary': 'piggy-bank-outline',
+
+  'Income Breakdown': 'cash-plus',
+
+  'Expenses Breakdown': 'cash-minus',
+
+  'Top Category': 'trophy-outline',
+
+  'Show Categories': 'view-grid-outline',
+
+  'Reduce Spending': 'trending-down',
+};
 
 const C = {
-  bg: '#090909',
-  bgSurface: '#0F0F0F',
-  bgElevated: '#141414',
-  bgInput: '#111111',
-  bgTint: '#1A1A1A',
+  // Surfaces — each step is clearly distinguishable
+  bg: '#07080A', // true-black tinted cool — OLED friendly
+  bgSurface: '#0D0F12', // card base
+  bgElevated: '#131619', // raised elements
+  bgInput: '#0F1114', // input well
+  bgTint: '#1A1D22', // hover / pressed tint
 
-  gold: '#C8A44A',
-  goldBright: '#EDD270',
-  goldDim: '#2A2010',
-  goldBorder: '#302010',
-  goldText: '#F4DC90',
+  // Gold — warmer, more luminous hierarchy
+  gold: '#C9974A', // primary accent
+  goldBright: '#F0CB74', // highlights, active states
+  goldDim: '#1E1A0F', // gold-tinted surface (sessions)
+  goldBorder: '#2E2310', // gold-hued border
+  goldText: '#F5DFA0', // readable gold text
 
-  border: '#1C1C1C',
-  borderSoft: '#161616',
-  borderGold: '#2C2010',
+  // Structural borders — refined step between surfaces
+  border: '#1E2126',
+  borderSoft: '#171A1F',
+  borderGold: '#2A200C',
 
-  textPrimary: '#EDE9E3',
-  textSecondary: '#7A7772',
-  textTertiary: '#3D3D3A',
-  textInverse: '#080600',
+  // Typography — higher contrast at each tier
+  textPrimary: '#EEE9E2', // near-white warm
+  textSecondary: '#72706C', // mid-grey warm
+  textTertiary: '#3A3A38', // placeholder / timestamps
+  textInverse: '#060400', // text on gold buttons
 
-  green: '#35C470',
-  greenDim: '#0A1E12',
-  greenBdr: '#1A3D22',
+  // Semantic — green
+  green: '#2EBF68',
+  greenDim: '#091A10',
+  greenBdr: '#163324',
 
-  red: '#D94F4E',
-  redDim: '#1A0C0C',
-  redBdr: '#3D1818',
+  // Semantic — red
+  red: '#D44F50',
+  redDim: '#180C0C',
+  redBdr: '#381515',
 
-  amber: '#E89B22',
+  // Semantic — amber
+  amber: '#E89530',
   amberDim: '#1A1208',
 
-  purple: '#7B72D8',
-  purpleDim: '#111038',
+  // Semantic — purple
+  purple: '#7872D5',
+  purpleDim: '#100F36',
 
-  teal: '#1C9870',
-  tealDim: '#071A12',
+  // Semantic — teal
+  teal: '#1E9B74',
+  tealDim: '#071A14',
 };
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -86,6 +114,14 @@ type InsightType =
   | 'merchant'
   | 'summary';
 
+interface Message {
+  id: string;
+  role: MessageRole;
+  text: string;
+  timestamp: number;
+  meta?: MessageMeta;
+  suggestions?: string[];
+}
 interface MerchantChip {
   name: string;
   category: string;
@@ -115,13 +151,6 @@ interface MessageMeta {
   anomaly?: { ref: string; desc: string; amount: string };
   savingsTip?: string;
 }
-interface Message {
-  id: string;
-  role: MessageRole;
-  text: string;
-  timestamp: number;
-  meta?: MessageMeta;
-}
 interface ChatSession {
   id: string;
   title: string;
@@ -138,11 +167,30 @@ const SESSIONS_KEY = 'smartspend_sessions_v3';
 const ACTIVE_KEY = 'smartspend_active_v3';
 
 const QUICK_PROMPTS = [
-  { icon: 'chart-pie', label: 'Where did I spend most this month?' },
-  { icon: 'repeat', label: 'Show recurring merchants' },
-  { icon: 'alert-circle-outline', label: 'Detect unusual spending' },
-  { icon: 'piggy-bank-outline', label: 'How can I save more?' },
-  { icon: 'calendar-month-outline', label: 'Compare this month vs last' },
+  {
+    icon: 'chart-pie',
+    label: 'Where did I spend most this month?',
+  },
+  {
+    icon: 'store-outline',
+    label: 'Show top merchants',
+  },
+  {
+    icon: 'view-grid-outline',
+    label: 'Spending by category',
+  },
+  {
+    icon: 'cash-multiple',
+    label: 'How much income did I receive?',
+  },
+  {
+    icon: 'piggy-bank-outline',
+    label: 'How much did I save?',
+  },
+  {
+    icon: 'alert-circle-outline',
+    label: 'Detect unusual spending',
+  },
 ];
 
 const LOADING_PHRASES = [
@@ -159,48 +207,55 @@ const CAT = {
     color: C.amber,
     label: 'Spending',
   },
-
   categories: {
     icon: 'view-grid-outline',
     color: C.teal,
     label: 'Categories',
   },
-
   subscriptions: {
     icon: 'repeat',
     color: C.purple,
     label: 'Subscriptions',
   },
-
   income: {
     icon: 'cash-multiple',
     color: C.green,
     label: 'Income',
   },
-
   savings: {
     icon: 'piggy-bank-outline',
     color: C.green,
     label: 'Savings',
   },
-
   anomaly: {
     icon: 'alert-circle-outline',
     color: C.red,
     label: 'Anomaly',
   },
-
   merchant: {
     icon: 'store-outline',
     color: C.teal,
     label: 'Merchant',
   },
-
   summary: {
     icon: 'shimmer',
     color: C.gold,
     label: 'Summary',
   },
+};
+
+// ─── Utility: derive session title from first user message ─────────────────────
+// Mirrors behaviour in Claude / ChatGPT: first user question becomes the title.
+// Falls back to "New chat" if no user message exists yet.
+const deriveSessionTitle = (messages: Message[]): string => {
+  const firstUser = messages.find(m => m.role === 'user');
+  if (!firstUser) return 'New chat';
+  const text = firstUser.text.trim();
+  // Truncate to 42 chars with ellipsis, preserving word boundaries
+  if (text.length <= 42) return text;
+  const truncated = text.slice(0, 42);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > 28 ? truncated.slice(0, lastSpace) : truncated) + '…';
 };
 
 // ─── Tiny utilities ────────────────────────────────────────────────────────────
@@ -307,7 +362,7 @@ const WaveformLoader: React.FC<{ phrase: string }> = ({ phrase }) => {
   );
 };
 
-// ── Merchant chip row ──────────────────────────────────────────────────────────
+// ── Income card ────────────────────────────────────────────────────────────────
 const IncomeCard = ({ text }: { text: string }) => (
   <View
     style={{
@@ -320,42 +375,39 @@ const IncomeCard = ({ text }: { text: string }) => (
     }}
   >
     <MaterialCommunityIcons name="cash-multiple" size={20} color={C.green} />
-
-    <Text
-      style={{
-        color: C.green,
-        marginTop: 6,
-        fontWeight: '600',
-      }}
-    >
+    <Text style={{ color: C.green, marginTop: 6, fontWeight: '600' }}>
       Income Summary
     </Text>
-
-    <Text
-      style={{
-        color: C.textPrimary,
-        marginTop: 4,
-      }}
-    >
-      {text}
-    </Text>
+    <Text style={{ color: C.textPrimary, marginTop: 4 }}>{text}</Text>
   </View>
 );
 
-const SubscriptionCard: React.FC<{
-  merchants: MerchantChip[];
-}> = ({ merchants }) => (
+const SubscriptionCard: React.FC<{ merchants: MerchantChip[] }> = ({
+  merchants,
+}) => (
   <View style={g.subscriptionCard}>
-    <Text>Recurring Subscriptions</Text>
-
+    <Text style={{ color: C.purple, fontWeight: '600', marginBottom: 8 }}>
+      Recurring Subscriptions
+    </Text>
     {merchants.map(sub => (
-      <View key={sub.name}>
-        <Text>{sub.name}</Text>
-        <Text>{sub.amount}</Text>
+      <View
+        key={sub.name}
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          paddingVertical: 4,
+        }}
+      >
+        <Text style={{ color: C.textPrimary, fontSize: 12 }}>{sub.name}</Text>
+        <Text style={{ color: C.purple, fontSize: 12, fontWeight: '600' }}>
+          {sub.amount}
+        </Text>
       </View>
     ))}
   </View>
 );
+
+// ── Merchant chip row ──────────────────────────────────────────────────────────
 
 const MerchantRow: React.FC<{ merchants: MerchantChip[] }> = ({
   merchants,
@@ -390,20 +442,39 @@ const MerchantRow: React.FC<{ merchants: MerchantChip[] }> = ({
   </ScrollView>
 );
 
-const CategoryChart: React.FC<{
-  bars: MiniBar[];
-}> = ({ bars }) => (
-  <BarChart
-    data={bars.map(b => ({
-      value: b.amount,
-      label: b.label,
-      frontColor: b.color,
-    }))}
-    hideRules
-    roundedTop
-    spacing={20}
-    barWidth={20}
-  />
+//CUSTOM HORIZONTAL CHART
+const CategoryChart: React.FC<{ bars: MiniBar[] }> = ({ bars }) => (
+  <View style={g.categoryCard}>
+    {bars.map(item => {
+      const max = Math.max(...bars.map(b => b.amount));
+
+      const width = (item.amount / max) * 100;
+
+      return (
+        <View key={item.label} style={g.categoryRow}>
+          <View style={g.categoryHeader}>
+            <Text style={g.categoryLabel}>{item.label}</Text>
+
+            <Text style={g.categoryAmount}>₹{item.amount}</Text>
+          </View>
+
+          <View style={g.progressTrack}>
+            <View
+              style={[
+                g.progressFill,
+                {
+                  width: `${width}%`,
+                  backgroundColor: item.color,
+                },
+              ]}
+            />
+          </View>
+
+          <Text style={g.categoryPercent}>{item.percent?.toFixed(1)}%</Text>
+        </View>
+      );
+    })}
+  </View>
 );
 
 // ── Anomaly alert card ─────────────────────────────────────────────────────────
@@ -442,7 +513,10 @@ const SavingsPill: React.FC<{ tip: string }> = ({ tip }) => (
 
 // ── Message bubble ─────────────────────────────────────────────────────────────
 
-const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
+const MessageBubble: React.FC<{
+  message: Message;
+  onSuggestionPress?: (text: string) => void;
+}> = ({ message, onSuggestionPress }) => {
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(14)).current;
   const isUser = message.role === 'user';
@@ -465,14 +539,11 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
   }, []);
 
   const cat = message.meta?.insightType ? CAT[message.meta.insightType] : null;
-  console.log('MESSAGE META:', message.meta);
   const meta = message.meta;
-
   const merchants = meta?.merchants ?? [];
-
   const bars = meta?.bars ?? [];
-
   const insightType = meta?.insightType;
+
   if (isUser) {
     return (
       <Animated.View
@@ -521,6 +592,27 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
 
         <View style={g.aiCard}>
           <Text style={g.aiText}>{message.text}</Text>
+          {message.suggestions?.length ? (
+            <View style={g.suggestionContainer}>
+              {message.suggestions.map(suggestion => (
+                <TouchableOpacity
+                  key={suggestion}
+                  style={g.suggestionChip}
+                  onPress={() => onSuggestionPress?.(suggestion)}
+                >
+                  <View style={g.suggestionContent}>
+                    <MaterialCommunityIcons
+                      name={suggestionIcons[suggestion] || 'lightbulb-outline'}
+                      size={16}
+                      color="#D4AF37"
+                    />
+
+                    <Text style={g.suggestionText}>{suggestion}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
 
           {insightType === 'merchant' && merchants.length > 0 && (
             <MerchantRow merchants={merchants} />
@@ -565,6 +657,7 @@ const SessionItem: React.FC<{
       </View>
 
       <View style={{ flex: 1, gap: 3 }}>
+        {/* Title = first user question (set by deriveSessionTitle) */}
         <Text
           style={[g.sessionTitle, isActive && { color: C.goldBright }]}
           numberOfLines={1}
@@ -610,12 +703,6 @@ const ChatScreen: React.FC = () => {
   const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
   const [showHistory, setShowHistory] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  /*
-   * FIX 1: headerH tracks ONLY the rendered height of the <header> View,
-   * measured via onLayout. The SafeAreaView (edges=['top','left','right'])
-   * has already consumed insets.top, so the header's y-origin is below the
-   * notch. We must NOT add insets.top again to keyboardVerticalOffset.
-   */
   const [headerH, setHeaderH] = useState(56);
 
   const flatListRef = useRef<FlatList>(null);
@@ -642,7 +729,8 @@ const ChatScreen: React.FC = () => {
       };
       const session: ChatSession = {
         id: `s${Date.now()}`,
-        title: 'New financial session',
+        // Title starts as 'New chat' — updated to first user question on send
+        title: 'New chat',
         preview: welcome.text.slice(0, 64) + '…',
         category: 'summary',
         messages: [welcome],
@@ -659,6 +747,14 @@ const ChatScreen: React.FC = () => {
     [saveSessions],
   );
 
+useEffect(() => {
+  if (messages.length > 0) {
+    flatListRef.current?.scrollToEnd({
+      animated: true,
+    });
+  }
+}, [messages.length]);
+      
   useEffect(() => {
     (async () => {
       try {
@@ -685,18 +781,15 @@ const ChatScreen: React.FC = () => {
     })();
   }, []);
 
+  // ── persistUpdate: uses deriveSessionTitle so title always = first user Q ──
   const persistUpdate = useCallback(
     (msgs: Message[], all: ChatSession[], sid: string) => {
       const next = all.map(s => {
         if (s.id !== sid) return s;
-        const firstUser = msgs.find(m => m.role === 'user');
         const last = msgs[msgs.length - 1];
         return {
           ...s,
-          title: firstUser
-            ? firstUser.text.slice(0, 36) +
-              (firstUser.text.length > 36 ? '…' : '')
-            : s.title,
+          title: deriveSessionTitle(msgs),
           preview: (last?.text?.slice(0, 64) ?? '') + '…',
           category: last?.meta?.insightType ?? s.category,
           messages: msgs,
@@ -789,12 +882,8 @@ const ChatScreen: React.FC = () => {
       };
       const withUser = [...messages, userMsg];
       setMessages(withUser);
+      // persistUpdate now derives title from first user question automatically
       persistUpdate(withUser, sessions, activeSessionId);
-      setTimeout(
-        () => flatListRef.current?.scrollToEnd({ animated: true }),
-        80,
-      );
-
       setIsTyping(true);
       setLoadingPhrase(LOADING_PHRASES[0]);
       phraseIdx.current = 0;
@@ -803,31 +892,65 @@ const ChatScreen: React.FC = () => {
 
       try {
         const aiResponse = await fetchAIInsight(text);
+        let suggestions: string[] = [];
+        console.log('INSIGHT TYPE:', aiResponse.insightType);
+        switch (aiResponse.insightType) {
+          case 'merchant':
+            suggestions = [
+              'Category Breakdown',
+              'Savings Summary',
+              'How can I reduce spending?',
+            ];
+            break;
 
+          case 'spending':
+            suggestions = [
+              'Top Merchants',
+              'Savings Summary',
+              'Show Categories',
+            ];
+            break;
+
+          case 'savings':
+            suggestions = [
+              'Income Breakdown',
+              'Expenses Breakdown',
+              'Top Category',
+            ];
+            break;
+
+          case 'income':
+            suggestions = [
+              'Top Income Sources',
+              'Savings Summary',
+              'Monthly Overview',
+            ];
+            break;
+
+          default:
+            suggestions = [
+              'Top Merchants',
+              'Category Breakdown',
+              'Savings Summary',
+            ];
+        }
         const aiMsg: Message = {
           id: `m${Date.now() + 1}`,
-
           role: 'ai',
-
           text: aiResponse.text,
-
           timestamp: Date.now(),
 
+          suggestions,
           meta: {
             insightType: aiResponse.insightType,
-
             bars: aiResponse.bars || [],
-
             merchants: aiResponse.merchants || [],
-
             savingsTip: aiResponse.savingsTip,
-
             anomaly: aiResponse.anomaly,
           },
         };
 
         const final = [...withUser, aiMsg];
-
         setMessages(final);
 
         setSessions(prev => {
@@ -835,31 +958,18 @@ const ChatScreen: React.FC = () => {
             s.id === activeSessionId
               ? {
                   ...s,
-
+                  // Keep first-user-question as title even after AI replies
+                  title: deriveSessionTitle(final),
                   preview: aiResponse.text.slice(0, 64) + '…',
-
                   category: aiResponse.insightType ?? s.category,
-
                   messages: final,
-
                   updatedAt: Date.now(),
                 }
               : s,
           );
-
           saveSessions(next);
-
           return next;
         });
-
-        setTimeout(
-          () =>
-            flatListRef.current?.scrollToEnd({
-              animated: true,
-            }),
-
-          100,
-        );
       } catch (err) {
         const errorMsg: Message = {
           id: `m${Date.now()}`,
@@ -867,9 +977,7 @@ const ChatScreen: React.FC = () => {
           text: 'Unable to fetch insights right now.',
           timestamp: Date.now(),
         };
-
         setMessages(prev => [...prev, errorMsg]);
-
         console.log('AI CHAT ERROR:', err);
       } finally {
         clearInterval(timer);
@@ -890,18 +998,16 @@ const ChatScreen: React.FC = () => {
   // ─── Derived state ────────────────────────────────────────────────────────
 
   const allHistory = useMemo(() => {
-    const realItems = sessions.map(
-      ({ id, title, preview, category, createdAt, updatedAt }) => ({
+    return sessions
+      .map(({ id, title, preview, category, createdAt, updatedAt }) => ({
         id,
         title,
         preview,
         category,
         createdAt,
         updatedAt,
-      }),
-    );
-    const realIds = new Set(realItems.map(r => r.id));
-    return [...realItems].sort((a, b) => b.updatedAt - a.updatedAt);
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   }, [sessions]);
 
   const activeSession = sessions.find(s => s.id === activeSessionId);
@@ -921,27 +1027,18 @@ const ChatScreen: React.FC = () => {
     );
   }
 
+  // ─── Input bar bottom padding ─────────────────────────────────────────────
+  // Ensures comfortable gap above home indicator on all devices (iPhone SE →
+  // Dynamic Island) without double-applying insets when keyboard is visible.
+  const inputPaddingBottom = Math.max(insets.bottom, 12);
+
   // ─── Main render ──────────────────────────────────────────────────────────
-  //
-  // Layout tree:
-  //
-  //  <SafeAreaView edges=[top,left,right]>      ← absorbs notch / status bar
-  //    <Header onLayout → headerH />
-  //    <KeyboardAvoidingView                    ← pushes content above keyboard
-  //        offset = headerH (NOT + insets.top)>
-  //      <FlatList (messages) />
-  //      [quick prompts — welcome only]
-  //      <inputBar paddingBottom=insets.bottom> ← clears home indicator;
-  //    </KeyboardAvoidingView>                     iOS removes it when KB is up
-  //  </SafeAreaView>
 
   return (
     <SafeAreaView style={g.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-      {/* ── Drawer overlay ──
-          FIX 8: zIndex raised to 15 so it correctly sits above the chat (0)
-          but below the drawer (25). */}
+      {/* ── Drawer overlay ── */}
       {showHistory && (
         <Animated.View
           style={[g.drawerOverlay, { opacity: historyAlpha }]}
@@ -955,8 +1052,7 @@ const ChatScreen: React.FC = () => {
         </Animated.View>
       )}
 
-      {/* ── History drawer ──
-          FIX 8: zIndex raised to 25. */}
+      {/* ── History drawer ── */}
       <Animated.View
         style={[
           g.drawer,
@@ -1012,9 +1108,7 @@ const ChatScreen: React.FC = () => {
         />
       </Animated.View>
 
-      {/* ── Top header ──
-          FIX 1: onLayout captures the true rendered height so
-          keyboardVerticalOffset is always exact. */}
+      {/* ── Top header ── */}
       <View
         style={g.header}
         onLayout={e => setHeaderH(e.nativeEvent.layout.height)}
@@ -1038,8 +1132,7 @@ const ChatScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={g.headerName} numberOfLines={1}>
-                {activeSession &&
-                activeSession.title !== 'New financial session'
+                {activeSession && activeSession.title !== 'New chat'
                   ? activeSession.title
                   : 'SmartSpend AI'}
               </Text>
@@ -1073,16 +1166,12 @@ const ChatScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* FIX 9: marginTop 8 → 5 */}
         <Text style={g.headerSub}>
           AI-powered financial insights from your SMS transaction history
         </Text>
       </View>
 
-      {/* ── Keyboard-aware content area ──
-          FIX 1: keyboardVerticalOffset = headerH only.
-          The SafeAreaView already ate insets.top; doubling it caused the input
-          to overshoot the keyboard by exactly insets.top pixels. */}
+      {/* ── Keyboard-aware content area ── */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1093,13 +1182,12 @@ const ChatScreen: React.FC = () => {
           ref={flatListRef}
           data={messages}
           keyExtractor={m => m.id}
-          renderItem={({ item }) => <MessageBubble message={item} />}
+          renderItem={({ item }) => (
+            <MessageBubble message={item} onSuggestionPress={sendMessage} />
+          )}
           contentContainerStyle={g.msgList}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
           ListHeaderComponent={
             showWelcome ? (
               <View style={g.welcomeBlock}>
@@ -1135,8 +1223,7 @@ const ChatScreen: React.FC = () => {
           }
         />
 
-        {/* ── Quick prompt chips (welcome state only) ──
-            FIX 10: paddingBottom 8 → 12 */}
+        {/* ── Quick prompt chips (welcome state only) ── */}
         {showWelcome && (
           <View style={g.promptsWrap}>
             <Text style={g.promptsLabel}>Suggested questions</Text>
@@ -1170,28 +1257,13 @@ const ChatScreen: React.FC = () => {
         )}
 
         {/* ── Input bar ──
-            FIX 4: paddingTop restored to 8 (was 0, collapsed separator gap on Android).
             paddingBottom = Math.max(insets.bottom, 12) so there is always a
-            comfortable gap above the home indicator. iOS removes the bottom
-            inset automatically when the keyboard is visible. */}
-        <View
-          style={g.inputBar}
-        >
+            comfortable gap above the home indicator on all devices.
+            iOS removes the bottom inset automatically when keyboard is visible. */}
+        <View style={[g.inputBar, { paddingBottom: inputPaddingBottom }]}>
           <View style={g.inputSep} />
 
-          {/* FIX 6: alignItems='flex-end' keeps voice + send pinned to the
-              bottom edge of a growing multiline input. */}
           <View style={g.inputRow}>
-            {/* <TouchableOpacity style={g.voiceBtn} activeOpacity={0.75}>
-              <MaterialCommunityIcons
-                name="microphone-outline"
-                size={19}
-                color={C.textTertiary}
-              />
-            </TouchableOpacity> */}
-
-            {/* FIX 5: minHeight 42 → 44 (HIG tap target), justifyContent
-                'center' → 'flex-start' so text grows downward. */}
             <View style={g.inputWrap}>
               <TextInput
                 ref={inputRef}
@@ -1208,7 +1280,6 @@ const ChatScreen: React.FC = () => {
               />
             </View>
 
-            {/* FIX 7: height 42 → 44 matches inputWrap minHeight */}
             <TouchableOpacity
               style={[
                 g.sendBtn,
@@ -1249,25 +1320,23 @@ const g = StyleSheet.create({
   loadingText: { fontSize: 13, color: C.textSecondary, letterSpacing: 0.3 },
 
   // ── Drawer overlay ────────────────────────────────────────────────────────
-  // FIX 8: zIndex 10 → 15
   drawerOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(0,0,0,0.76)',
     zIndex: 15,
   },
 
   // ── History drawer ────────────────────────────────────────────────────────
-  // FIX 8: zIndex 20 → 25
   drawer: {
     position: 'absolute',
     top: 0,
     left: 0,
     bottom: 0,
-    backgroundColor: '#0C0C0C',
+    backgroundColor: '#09090C',
     borderRightWidth: 0.5,
     borderRightColor: C.border,
     zIndex: 25,
@@ -1284,7 +1353,7 @@ const g = StyleSheet.create({
   },
   drawerTitle: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: C.textPrimary,
     letterSpacing: 0.2,
   },
@@ -1328,7 +1397,8 @@ const g = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sessionTitle: { fontSize: 12, fontWeight: '500', color: C.textPrimary },
+  // Slightly larger title font for readability (was 12)
+  sessionTitle: { fontSize: 13, fontWeight: '500', color: C.textPrimary },
   sessionPreview: { fontSize: 10, color: C.textSecondary, lineHeight: 14 },
   sessionDate: { fontSize: 9, color: C.textTertiary },
   catPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
@@ -1360,6 +1430,8 @@ const g = StyleSheet.create({
     gap: 9,
     flex: 1,
     paddingHorizontal: 8,
+    // Prevent overflow on narrow screens (iPhone SE 320pt)
+    minWidth: 0,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 7 },
 
@@ -1379,6 +1451,7 @@ const g = StyleSheet.create({
     fontWeight: '500',
     color: C.goldText,
     letterSpacing: 0.2,
+    flexShrink: 1,
   },
   statusRow: {
     flexDirection: 'row',
@@ -1398,6 +1471,7 @@ const g = StyleSheet.create({
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   encBadge: {
     flexDirection: 'row',
@@ -1411,7 +1485,6 @@ const g = StyleSheet.create({
     paddingVertical: 4,
   },
   encText: { fontSize: 9, color: C.textTertiary, letterSpacing: 0.5 },
-  // FIX 9: marginTop 8 → 5
   headerSub: {
     fontSize: 10,
     color: C.textTertiary,
@@ -1421,7 +1494,6 @@ const g = StyleSheet.create({
   },
 
   // ── Messages list ─────────────────────────────────────────────────────────
-  // FIX 2: paddingBottom 10 → 24 so last message is never clipped by input bar
   msgList: {
     paddingHorizontal: 14,
     paddingTop: 16,
@@ -1451,7 +1523,6 @@ const g = StyleSheet.create({
   welcomeSub: { fontSize: 11, color: C.textSecondary, letterSpacing: 0.25 },
 
   // ── Quick prompts ─────────────────────────────────────────────────────────
-  // FIX 10: paddingBottom 8 → 12
   promptsWrap: { paddingHorizontal: 14, paddingBottom: 12, gap: 7 },
   promptsLabel: { fontSize: 9, color: C.textTertiary, letterSpacing: 0.8 },
   promptChip: {
@@ -1470,6 +1541,7 @@ const g = StyleSheet.create({
   // ── User message ──────────────────────────────────────────────────────────
   userRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   userBubble: {
+    // Richer gold gradient feel via a deeper base
     backgroundColor: C.gold,
     borderRadius: 18,
     borderBottomRightRadius: 4,
@@ -1479,14 +1551,12 @@ const g = StyleSheet.create({
   userText: { fontSize: 13, color: C.textInverse, lineHeight: 19 },
   userTime: {
     fontSize: 9,
-    color: 'rgba(8,6,0,0.42)',
+    color: 'rgba(8,6,0,0.40)',
     textAlign: 'right',
     marginTop: 4,
   },
 
   // ── AI message ────────────────────────────────────────────────────────────
-  // FIX 3: alignItems 'flex-start' on the row; removed hard marginTop on avatar.
-  //        Avatar naturally sits at the top of the content column (badge or card).
   aiRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   aiAvatarSm: {
     width: 26,
@@ -1497,12 +1567,7 @@ const g = StyleSheet.create({
     borderColor: C.goldBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    // No marginTop — aligns flush with insight badge (or card when badge absent)
     flexShrink: 0,
-    // Push avatar down by the badge height + gap when badge IS present so it
-    // visually aligns with the card top. We do this with a small top margin
-    // equal to badge height (≈20px) + gap (5px). When no badge, the card
-    // itself starts at the top, so the avatar is correct either way.
     marginTop: 25,
   },
   insightBadge: {
@@ -1615,38 +1680,22 @@ const g = StyleSheet.create({
   waveLabel: { fontSize: 11, color: C.textSecondary, fontStyle: 'italic' },
 
   // ── Input bar ─────────────────────────────────────────────────────────────
-  // FIX 4: paddingTop 0 → 8 (prevents separator gap collapsing on Android)
+  // paddingBottom is injected inline via inputPaddingBottom
   inputBar: {
     backgroundColor: C.bg,
     paddingHorizontal: 14,
     paddingTop: 8,
-    // paddingBottom is set dynamically in JSX: Math.max(insets.bottom, 12)
   },
   inputSep: {
     height: 0.5,
     backgroundColor: C.border,
     marginBottom: 10,
   },
-  // FIX 6: alignItems 'flex-end' keeps flanking buttons pinned to bottom of
-  //        a multiline input
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 9,
   },
-  // FIX 7: height 42 → 44
-  voiceBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: C.bgSurface,
-    borderWidth: 0.5,
-    borderColor: C.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  // FIX 5: minHeight 42 → 44; justifyContent 'center' → 'flex-start'
   inputWrap: {
     flex: 1,
     backgroundColor: C.bgInput,
@@ -1656,7 +1705,7 @@ const g = StyleSheet.create({
     paddingHorizontal: 13,
     paddingTop: Platform.OS === 'ios' ? 11 : 7,
     paddingBottom: Platform.OS === 'ios' ? 11 : 7,
-    minHeight: 30,
+    minHeight: 44,
     justifyContent: 'flex-start',
   },
   input: {
@@ -1667,7 +1716,6 @@ const g = StyleSheet.create({
     padding: 0,
     margin: 0,
   },
-  // FIX 7: height 42 → 44
   sendBtn: {
     width: 44,
     height: 44,
@@ -1689,6 +1737,113 @@ const g = StyleSheet.create({
     borderColor: C.purple,
     borderRadius: 12,
     padding: 12,
+  },
+  categoryCard: {
+    backgroundColor: '#141414',
+
+    borderRadius: 20,
+
+    padding: 18,
+
+    marginTop: 12,
+
+    borderWidth: 1,
+
+    borderColor: 'rgba(212,175,55,0.12)',
+  },
+
+  categoryRow: {
+    marginBottom: 18,
+  },
+
+  categoryHeader: {
+    flexDirection: 'row',
+
+    justifyContent: 'space-between',
+
+    alignItems: 'center',
+
+    marginBottom: 8,
+  },
+
+  categoryLabel: {
+    color: '#FFFFFF',
+
+    fontSize: 15,
+
+    fontWeight: '600',
+  },
+
+  categoryAmount: {
+    color: '#D4AF37',
+
+    fontSize: 15,
+
+    fontWeight: '700',
+  },
+
+  progressTrack: {
+    height: 10,
+
+    backgroundColor: 'rgba(255,255,255,0.08)',
+
+    borderRadius: 999,
+
+    overflow: 'hidden',
+  },
+
+  progressFill: {
+    height: '100%',
+
+    borderRadius: 999,
+  },
+
+  categoryPercent: {
+    color: '#8A8A8A',
+
+    fontSize: 12,
+
+    marginTop: 6,
+
+    textAlign: 'right',
+  },
+  suggestionContainer: {
+    flexDirection: 'row',
+
+    flexWrap: 'wrap',
+
+    marginTop: 12,
+
+    gap: 8,
+  },
+
+  suggestionChip: {
+    backgroundColor: 'rgba(212,175,55,0.12)',
+
+    borderWidth: 1,
+
+    borderColor: 'rgba(212,175,55,0.25)',
+
+    borderRadius: 20,
+
+    paddingHorizontal: 12,
+
+    paddingVertical: 8,
+  },
+
+  suggestionText: {
+    color: '#D4AF37',
+
+    fontSize: 12,
+
+    fontWeight: '600',
+  },
+  suggestionContent: {
+    flexDirection: 'row',
+
+    alignItems: 'center',
+
+    gap: 6,
   },
 });
 

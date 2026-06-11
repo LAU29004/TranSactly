@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Space } from '../../theme';
+import { Colors, Space, Font, Radius } from '../../theme';
 import {
   SpendingCategory,
   EarningData,

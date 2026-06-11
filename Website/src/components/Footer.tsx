@@ -232,18 +232,18 @@ export default function Footer() {
               </p>
 
               <div className="footer-dl-row">
-                <a href="#" className="footer-dl-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.26c1.4-.06 2.37.71 3.17.75.96-.19 1.87-.98 3.3-.83 1.72.22 3 .98 3.79 2.54-3.47 1.88-2.9 6.16.48 7.62-.41 1.19-.89 2.28-1.74 3.94M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25"/>
-                  </svg>
-                  App Store
-                </a>
-                <a href="#" className="footer-dl-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3.18 23.76c.34.19.74.2 1.1.04l13.2-7.62-2.72-2.72-11.58 10.3zM.38 1.14C.14 1.5 0 1.96 0 2.53v18.94c0 .57.14 1.04.38 1.4l.07.07 10.6-10.6v-.25L.45 1.07l-.07.07zM21.12 9.76l-2.78-1.6-3.04 3.04 3.04 3.04 2.8-1.62c.8-.46.8-1.4 0-1.86zM4.28.18L17.5 7.8l-2.72 2.72L3.18.2 4.28.18z"/>
-                  </svg>
-                  Google Play
-                </a>
+<a href="#" className="footer-dl-btn">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm11-2h2v2h-2v-2zm3 0h2v2h-2v-2zm-3 3h2v2h-2v-2zm3 3h2v2h-2v-2zm-6-3h2v5h-2v-5z" />
+  </svg>
+
+  Go To QR
+</a>
               </div>
             </div>
 

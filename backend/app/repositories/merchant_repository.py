@@ -8,15 +8,18 @@ from app.models.merchant_memory import (
 
 
 def get_merchant_category(
-
     db: Session,
-
+    user_id: int,
     merchant: str,
 ):
 
     return (
 
         db.query(MerchantMemory)
+        .filter(
+            MerchantMemory.user_id
+            == user_id
+        )
 
         .filter(
             MerchantMemory.merchant
@@ -31,6 +34,8 @@ def save_merchant_memory(
 
     db: Session,
 
+    user_id: int,
+
     merchant: str,
 
     category: str,
@@ -40,8 +45,9 @@ def save_merchant_memory(
 
     existing = (
         get_merchant_category(
-            db,
-            merchant,
+        db,
+        user_id,
+        merchant,
         )
     )
 
@@ -50,11 +56,13 @@ def save_merchant_memory(
 
     memory = MerchantMemory(
 
-        merchant=merchant,
+    user_id=user_id,
 
-        category=category,
+    merchant=merchant,
 
-        confidence=confidence,
+    category=category,
+
+    confidence=confidence,
     )
 
     db.add(memory)

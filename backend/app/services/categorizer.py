@@ -162,6 +162,7 @@ def categorize_transaction(
 ):
 
     merchant = merchant.strip()
+    merchant = merchant.rstrip( ".,:;-")
 
     # ---------------------------------
     # Exact merchant match

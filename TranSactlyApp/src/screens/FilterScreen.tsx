@@ -14,6 +14,7 @@ import {
   Platform,
   UIManager,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
@@ -22,9 +23,13 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { Colors, Space, Radius, Font } from '../theme';
 import { FilterState } from '../types/Transaction';
-import { useTransactions } from '../context/TransactionContext';
+// import { useTransactions } from '../context/TransactionContext';
 import { parseSMSIntoTransactions } from '../services/readSms';
 import { fetchInsights, fetchTransactions } from '../services/api/insightsApi';
+import { downloadExcel } from '../services/api/exportApi';
+import RNFS from 'react-native-fs';
+import FileViewer from 'react-native-file-viewer';
+import { Buffer } from 'buffer';
 
 if (
   Platform.OS === 'android' &&
@@ -161,6 +166,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Travel: '#3B82F6',
   Health: '#10B981',
   Utilities: '#F59E0B',
+  'Home Improvement': '#1830b8',
   Income: '#3DCB7F',
   Others: '#6B7280',
 };
@@ -648,11 +654,12 @@ const ldStyles = StyleSheet.create({
 
 const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
   console.log('DASHBOARD DATA', JSON.stringify(data, null, 2));
-  const onlyTransfers = data.transactionCount > 0 && data.categoryBreakdown.length === 0;
+  const onlyTransfers =
+    data.transactionCount > 0 && data.categoryBreakdown.length === 0;
 
   if (onlyTransfers) {
     return (
-<View style={styles.emptyState}>
+      <View style={styles.emptyState}>
         <MaterialCommunityIcons
           name="database-remove-outline"
           size={52}
@@ -1391,6 +1398,57 @@ const FilterScreen: React.FC = () => {
   const btnScale = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(1)).current;
 
+const handleExportExcel = async () => {
+  try {
+
+    const data = await downloadExcel(
+      filter.startDate,
+      filter.endDate,
+    );
+
+    const start = filter.startDate
+      .toISOString()
+      .split('T')[0];
+
+    const end = filter.endDate
+      .toISOString()
+      .split('T')[0];
+
+    const filePath =
+      `${RNFS.DownloadDirectoryPath}/TranSactly_${start}_${end}.xlsx`;
+
+    const base64 =
+      Buffer.from(data).toString('base64');
+
+    await RNFS.writeFile(
+      filePath,
+      base64,
+      'base64',
+    );
+
+    Alert.alert(
+      'Success',
+      'Excel exported successfully',
+    );
+
+    await FileViewer.open(
+      filePath,
+    );
+
+  } catch (error) {
+
+    console.error(
+      'EXPORT ERROR',
+      error,
+    );
+
+    Alert.alert(
+      'Export Failed',
+      'Unable to export Excel file',
+    );
+  }
+};
+
   // idle CTA glow
   useEffect(() => {
     if (loading) return;
@@ -1464,6 +1522,27 @@ const FilterScreen: React.FC = () => {
     try {
       console.log('STEP 2');
       console.log('INSIGHTS REQUEST', filter.startDate, filter.endDate);
+      console.log('START DATE', filter.startDate);
+      console.log('END DATE', filter.endDate);
+      console.log(
+  'START TYPE',
+  typeof filter.startDate,
+);
+
+console.log(
+  'END TYPE',
+  typeof filter.endDate,
+);
+
+console.log(
+  'IS DATE START',
+  filter.startDate instanceof Date,
+);
+
+console.log(
+  'IS DATE END',
+  filter.endDate instanceof Date,
+);
       const insightsResponse = await fetchInsights(
         filter.startDate,
         filter.endDate,
@@ -1478,9 +1557,20 @@ const FilterScreen: React.FC = () => {
       console.log('STEP 5');
       setTransactions(transactionsResponse.transactions ?? []);
       console.log('STEP 6');
-    } catch (err) {
-      console.error(err);
-    } finally {
+    }catch (err: any) {
+
+  console.log(
+    'ERROR RESPONSE',
+    err?.response?.data,
+  );
+
+  console.log(
+    'ERROR STATUS',
+    err?.response?.status,
+  );
+
+  console.error(err);
+}finally {
       setLoading(false);
     }
   };
@@ -1681,6 +1771,19 @@ const FilterScreen: React.FC = () => {
                 </View>
               ))}
             </View>
+            <TouchableOpacity
+              style={styles.exportBtn}
+              activeOpacity={0.85}
+              onPress={handleExportExcel}
+            >
+              <MaterialCommunityIcons
+                name="file-excel-outline"
+                size={18}
+                color="#fff"
+              />
+
+              <Text style={styles.exportBtnText}>EXPORT TO EXCEL</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.aiAssistantBtn}
               activeOpacity={0.85}
@@ -2011,6 +2114,33 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 8,
     lineHeight: 22,
+  },
+  exportBtn: {
+    height: 54,
+
+    borderRadius: Radius.full,
+
+    backgroundColor: '#217346',
+
+    flexDirection: 'row',
+
+    alignItems: 'center',
+
+    justifyContent: 'center',
+
+    gap: Space.sm,
+
+    marginBottom: Space.md,
+  },
+
+  exportBtnText: {
+    color: '#FFF',
+
+    fontSize: 12,
+
+    fontWeight: '800',
+
+    letterSpacing: 1.5,
   },
 });
 

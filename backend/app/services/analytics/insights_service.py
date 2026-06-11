@@ -8,8 +8,8 @@ from app.models.transaction import Transaction
 
 def get_dashboard_insights(
 
+    user_id: int,
     start_date: str | None = None,
-
     end_date: str | None = None,
 ):
 
@@ -40,7 +40,9 @@ def get_dashboard_insights(
                     Transaction.amount
                 )
             )
-
+            .filter(
+    Transaction.user_id == user_id
+)
             .filter(
                 Transaction.category
                 == "Income"
@@ -73,7 +75,9 @@ def get_dashboard_insights(
                     Transaction.amount
                 )
             )
-
+            .filter(
+    Transaction.user_id == user_id
+)
             .filter(
                 Transaction.type
                 == "debit"
@@ -129,9 +133,12 @@ def get_dashboard_insights(
         # -----------------------------
 
         count_query = (
-            db.query(
-                Transaction
-            )
+    db.query(
+        Transaction
+    )
+    .filter(
+        Transaction.user_id == user_id
+    )
         )
 
         if start_dt:
@@ -160,7 +167,9 @@ def get_dashboard_insights(
                     Transaction.amount
                 ),
             )
-
+            .filter(
+    Transaction.user_id == user_id
+)
             .filter(
                 Transaction.type
                 == "debit"
@@ -256,6 +265,9 @@ def get_dashboard_insights(
                     Transaction.amount
                 ),
             )
+            .filter(
+    Transaction.user_id == user_id
+)
 
             .filter(
                 Transaction.type

@@ -63,6 +63,9 @@ CATEGORY_CONTEXTS = {
 
     "Utilities":
     "electricity water gas utility recharge broadband internet mobile postpaid dth",
+    
+    "Home Improvement":
+    "sanitary hardware tiles cement steel plumbing construction electrical furniture home renovation"
 }
 
 # --------------------------------------------------
@@ -174,6 +177,16 @@ KEYWORD_CATEGORIES = {
     "dth",
     "utility",
 ],
+
+"Home Improvement": [
+    "sanitary",
+    "hardware",
+    "tiles",
+    "cement",
+    "steel",
+    "pipes",
+    "electrical",
+]
 }
 
 
@@ -203,6 +216,32 @@ def classify_by_keyword(
 BUSINESS_KEYWORDS = {
 
     "food",
+    "sanitary",
+    "ware",
+    "hardware",
+    "traders",
+    "agency",
+    "agencies",
+    "enterprises",
+    "enterprise",
+    "services",
+    "solutions",
+    "industries",
+    "cement",
+    "steel",
+    "tiles",
+    "pipes",
+    "stationery",
+    "furniture",
+    "electrical",
+    "electronics",
+    "mobile",
+    "postpaid",
+    "telecom",
+    "pharma",
+    "chemist",
+    "medical",
+    "hospital",
     "foods",
     "hotel",
     "restaurant",
@@ -280,8 +319,7 @@ def is_person_name(
     ]
 
     return (
-        len(alpha_words)
-        >= 2
+        len(alpha_words) >= 2 and len(alpha_words) <= 4
     )
 
 
@@ -290,15 +328,11 @@ def is_person_name(
 # --------------------------------------------------
 
 def categorize_transaction(
-
     db: Session,
-
+    user_id: int,
     message: str,
-
     merchant: str,
-
     intent: str,
-
     transaction_type: str,
 ):
     # -----------------------------------------
@@ -362,13 +396,11 @@ def categorize_transaction(
 
         save_merchant_memory(
 
-            db=db,
-
-            merchant=merchant,
-
-            category=keyword_category,
-
-            confidence=0.95,
+    db=db,
+    user_id=user_id,
+    merchant=merchant,
+    category=keyword_category,
+    confidence=0.95,
         )
 
         return {
@@ -388,12 +420,15 @@ def categorize_transaction(
     # --------------------------------------------------
 
     existing_memory = (
-        get_merchant_category(
-            db,
-            merchant,
-        )
+    get_merchant_category(
+        db,
+        user_id,
+        merchant,
     )
-
+    )
+    if existing_memory:
+        if existing_memory.category in ["Transfer" , "Others"]:
+            existing_memory = None
     if existing_memory:
         print( "SOURCE => DATABASE_MEMORY |",
         merchant,
@@ -422,17 +457,6 @@ def categorize_transaction(
         print(        "SOURCE => PERSON_RULE |",
         merchant,
         "=> Transfer",)
-
-        save_merchant_memory(
-
-            db=db,
-
-            merchant=merchant,
-
-            category="Transfer",
-
-            confidence=0.99,
-        )
 
         return {
 
@@ -555,11 +579,11 @@ def categorize_transaction(
         scores,
         key=scores.get,
     )
-
     confidence = float(
         scores[best_category]
     )
-
+    if confidence < 0.35:
+        best_category = "Others"
     # --------------------------------------------------
     # SAVE HIGH CONFIDENCE RESULT
     # --------------------------------------------------
@@ -568,19 +592,22 @@ def categorize_transaction(
 
         merchant != "Unknown"
 
-        and confidence >=
-        settings.CONFIDENCE_THRESHOLD
+        and confidence >= 0.60
+        and best_category not in ["Transfer" , "Others"]
+        and not is_person_name(merchant)
     ):
 
         save_merchant_memory(
 
-            db=db,
+    db=db,
 
-            merchant=merchant,
+    user_id=user_id,
 
-            category=best_category,
+    merchant=merchant,
 
-            confidence=confidence,
+    category=keyword_category,
+
+    confidence=0.95,
         )
 
     # --------------------------------------------------
@@ -620,19 +647,21 @@ def categorize_transaction(
             if (
                 gemini_confidence
                 >= 0.75
+                and 
+                gemini_category not in ["Transfer" , "Others"]
             ):
 
                 save_merchant_memory(
 
-                    db=db,
+    db=db,
 
-                    merchant=merchant,
+    user_id=user_id,
 
-                    category=
-                    gemini_category,
+    merchant=merchant,
 
-                    confidence=
-                    gemini_confidence,
+    category=gemini_category,
+
+    confidence=gemini_confidence
                 )
 
                 return {

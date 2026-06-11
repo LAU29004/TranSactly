@@ -24,7 +24,7 @@ export interface InsightObject {
     | 'alert'
     | 'info';
 
-  cta: string;
+  // cta: string;
 }
 
 export const generateAIInsights = (
@@ -141,10 +141,10 @@ export const generateAIInsights = (
         ? 'info'
         : 'alert',
 
-    cta:
-      savingsRate >= 30
-        ? 'Keep Saving'
-        : 'Reduce Spending',
+    // cta:
+    //   savingsRate >= 30
+    //     ? 'Keep Saving'
+    //     : 'Reduce Spending',
   });
 
   // -------------------------
@@ -176,8 +176,8 @@ export const generateAIInsights = (
 
       type: 'warn',
 
-      cta:
-        'View Breakdown',
+      // cta:
+      //   'View Breakdown',
     });
   }
 
@@ -212,8 +212,8 @@ export const generateAIInsights = (
 
       type: 'info',
 
-      cta:
-        'Manage Subscriptions',
+      // cta:
+      //   'Manage Subscriptions',
     });
   }
 

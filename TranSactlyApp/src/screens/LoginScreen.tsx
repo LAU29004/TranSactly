@@ -4,21 +4,66 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Space, Radius, Font } from '../theme';
-
+import GoogleSignin from '../services/auth/googleAuth';
+import { loginWithGoogle } from '../services/api/authApi';
+import { Button } from 'react-native';
+import { saveToken } from '../services/auth/authStorage';
+import { saveUser } from '../services/auth/userStorage';
+import { getToken } from '../services/auth/authStorage';
 const { height } = Dimensions.get('window');
 
+type RootStackParamList = {
+  Login: undefined;
+  MainTabs: undefined;
+};
 const LoginScreen: React.FC = () => {
+  const testGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+
+      const result = await GoogleSignin.signIn();
+
+      const idToken = result.data?.idToken;
+      if (!idToken || !result.data) {
+  return;
+}
+
+      if (!idToken) {
+        console.log('NO ID TOKEN');
+
+        return;
+      }
+
+      const response = await loginWithGoogle(idToken);
+
+      await saveToken(response.access_token);
+
+await saveUser({
+  id: response.user_id,
+  name: response.name,
+  email: response.email,
+  photo: result.data.user.photo,
+});
+
+      const token = await getToken();
+
+      navigation.replace('MainTabs');
+    } catch (error) {
+      console.log('GOOGLE LOGIN ERROR', error);
+    }
+  };
+  const navigation = useNavigation<any>();
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
 
       <View style={styles.container}>
-
         {/* Top wordmark */}
         <View style={styles.topBar}>
           <Text style={styles.topLabel}>SOVEREIGN LEDGER V2.0</Text>
@@ -58,7 +103,12 @@ const LoginScreen: React.FC = () => {
             <View style={styles.dividerLine} />
           </View>
 
-          <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.googleBtn}
+            activeOpacity={0.85}
+            // onPress={() => navigation.replace('MainTabs')}
+            onPress={testGoogleLogin}
+          >
             <View style={styles.googleIconWrap}>
               <Text style={styles.googleG}>G</Text>
             </View>
@@ -72,8 +122,7 @@ const LoginScreen: React.FC = () => {
 
           <Text style={styles.terms}>
             By signing in, you agree to our{' '}
-            <Text style={styles.termsLink}>Terms</Text>
-            {' '}and{' '}
+            <Text style={styles.termsLink}>Terms</Text> and{' '}
             <Text style={styles.termsLink}>Privacy Policy</Text>
           </Text>
         </View>

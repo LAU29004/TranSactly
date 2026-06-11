@@ -59,7 +59,7 @@ const AIInsightsSection: React.FC<AIInsightsSectionProps> = ({
             period={period}
             category={ins.category}
             type={ins.type}
-            cta={ins.cta}
+            // cta={ins.cta}
           />
         ))}
       </ScrollView>

@@ -20,6 +20,8 @@ from datetime import datetime
 
 from sqlalchemy import DateTime
 
+from sqlalchemy import ForeignKey
+
 class Transaction(Base):
 
     __tablename__ = "transactions"
@@ -33,6 +35,11 @@ class Transaction(Base):
         index=True,
     )
 
+    user_id: Mapped[int] = mapped_column(
+    ForeignKey("users.id"),
+    index=True,
+)
+    
     message: Mapped[str] = mapped_column(
         String
     )

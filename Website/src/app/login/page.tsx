@@ -516,7 +516,7 @@ export default function LoginPage() {
           </div>
 
           <p className="login-left-foot">
-            Join 500,000+ users who trust Finorio with their finances every day.
+            Join Us to track your expenses , income in AI-Optimized way.
           </p>
         </div>
 
@@ -609,7 +609,7 @@ export default function LoginPage() {
                       ),
                     },
                   ].map((s) => (
-                    <button key={s.label} className="login-social-btn">
+                    <button key={s.label} className="login-social-btn" onClick={() => setDone(true)}>
                       {s.icon}
                       {s.label}
                     </button>

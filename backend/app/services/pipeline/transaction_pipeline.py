@@ -37,7 +37,8 @@ from app.repositories.transaction_repository import (
 
 
 def process_single_transaction(
-    sms_data : dict
+        sms_data: dict,
+    user_id: int,
 ):
     message = sms_data.message
     sms_date = sms_data.date
@@ -101,15 +102,17 @@ def process_single_transaction(
 
         decision = categorize_transaction(
 
-            db=db,
+    db=db,
 
-            message=cleaned,
+    user_id=user_id,
 
-            merchant=merchant,
+    message=cleaned,
 
-            intent=intent,
+    merchant=merchant,
 
-            transaction_type=transaction_type,
+    intent=intent,
+
+    transaction_type=transaction_type,
         )
 
         logger.info(
@@ -126,6 +129,7 @@ def process_single_transaction(
         # -------------------------
 
         result = {
+            "user_id": user_id,
 
             "message": cleaned,
 
@@ -169,7 +173,8 @@ def process_single_transaction(
 
 
 def process_transactions(
-    messages: list[str]
+       messages: list[str],
+    user_id: int,
 ):
 
     results = []
@@ -178,7 +183,8 @@ def process_transactions(
 
         parsed = (
             process_single_transaction(
-                message
+                      message,
+        user_id,
             )
         )
 

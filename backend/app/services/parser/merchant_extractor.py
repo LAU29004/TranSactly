@@ -49,6 +49,7 @@ def clean_merchant(
 ):
 
     merchant = merchant.strip()
+    merchant = merchant.rstrip( ".,:;-")
 
     merchant = re.sub(
         r"[^A-Za-z0-9 &._-]",
@@ -57,6 +58,7 @@ def clean_merchant(
     )
 
     merchant = merchant.strip()
+    merchant = merchant.rstrip( ".,:;-")
 
     if merchant.lower() in STOP_WORDS:
         return "Unknown"

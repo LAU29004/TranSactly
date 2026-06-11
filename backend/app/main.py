@@ -36,7 +36,29 @@ from app.routes.transactions import (
     router as transactions_router,
 )
 
+from app.routes.export_routes import (
+    router as export_router,
+)
+
+from app.routes.home import router as home_router
+
+from app.db.base import Base
+from app.db.session import engine
+
+import app.db.base_imports
+
+from app.routes.auth import (
+    router as auth_router,
+)
+
+from app.routes.user import (
+    router as user_router,
+)
 app = FastAPI()
+print(Base.metadata.tables.keys())
+Base.metadata.create_all(
+    bind=engine
+)
 
 app.state.limiter = limiter
 
@@ -71,6 +93,19 @@ app.include_router(
     transactions_router
 )
 
+app.include_router(
+    export_router
+)
+
+app.include_router(
+    home_router
+)
+app.include_router(
+    auth_router
+)
+app.include_router(
+    user_router
+)
 app.add_exception_handler(
 
     Exception,

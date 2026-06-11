@@ -99,12 +99,12 @@ INTENT_EXAMPLES = {
         "which merchant takes most money",
 ],
 
-    "compare": [
-        "compare this month",
-        "compare spending",
-        "last month vs this month",
-        "month over month",
-],
+#     "compare": [
+#         "compare this month",
+#         "compare spending",
+#         "last month vs this month",
+#         "month over month",
+# ],
 }
 
 INTENT_EMBEDDINGS = {
@@ -157,7 +157,7 @@ def detect_financial_intent(
         f"({best_score:.3f})"
     )
 
-    if best_score < 0.45:
+    if best_score < 0.70:
 
         return "unknown"
 

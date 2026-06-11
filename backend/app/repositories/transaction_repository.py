@@ -16,7 +16,11 @@ def save_transaction(
     existing = (
 
     db.query(Transaction)
-
+        .filter(
+        Transaction.user_id
+        ==
+        transaction_data["user_id"]
+    )
     .filter(
         Transaction.message
         == transaction_data["message"]
@@ -29,6 +33,8 @@ def save_transaction(
         return existing
 
     transaction = Transaction(
+           user_id=
+    transaction_data["user_id"],
 
         message=
         transaction_data["message"],

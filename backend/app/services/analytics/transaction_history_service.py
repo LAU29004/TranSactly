@@ -5,19 +5,25 @@ from app.models.transaction import Transaction
 
 
 def get_recent_transactions(
+
+    user_id: int,
+
     limit: int = 20,
+
     start_date: str | None = None,
+
     end_date: str | None = None,
 ):
-
+    print("CURRENT USER:", user_id)
     db = SessionLocal()
 
     try:
 
         query = db.query(
             Transaction
-        )
-
+        ).filter(
+        Transaction.user_id == user_id
+    )
         if start_date:
 
             query = query.filter(

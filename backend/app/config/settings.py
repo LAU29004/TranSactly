@@ -18,10 +18,18 @@ class Settings(BaseSettings):
     RATE_LIMIT: str
 
     ENVIRONMENT: str
-    
+
     DATABASE_URL: str
 
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str | None = None
+
+    GROQ_API_KEY: str
+
+    JWT_SECRET: str
+
+    JWT_ALGORITHM: str
+
+    GOOGLE_CLIENT_ID: str
 
     class Config:
 

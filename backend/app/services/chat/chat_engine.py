@@ -12,9 +12,17 @@ from app.services.chat.intent_detector import (
     detect_financial_intent,
 )
 
+from app.services.chat.context_builder import (
+    build_financial_context,
+)
+
+from app.services.chat.groq_chat import (
+    answer_financial_question,
+)
 
 def generate_chat_response(
     query: str,
+    user_id: int,
 ):
 
     db = SessionLocal()
@@ -44,6 +52,9 @@ def generate_chat_response(
                         Transaction.amount
                     ),
                 )
+                .filter(
+    Transaction.user_id == user_id
+)
 
                 .filter(
                     Transaction.type == "debit"
@@ -145,7 +156,9 @@ def generate_chat_response(
                         Transaction.amount
                     ),
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.type == "debit"
                 )
@@ -231,7 +244,9 @@ def generate_chat_response(
                         Transaction.amount
                     ),
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.intent
                     == "subscription"
@@ -291,7 +306,9 @@ def generate_chat_response(
                         Transaction.amount
                     )
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.category
                     == "Income"
@@ -309,7 +326,9 @@ def generate_chat_response(
                         Transaction.amount
                     )
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.type
                     == "debit"
@@ -337,7 +356,9 @@ def generate_chat_response(
                         Transaction.amount
                     ),
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.type
                     == "debit"
@@ -360,9 +381,11 @@ def generate_chat_response(
 
                 .first()
             )
-
-            tip = (
-                "Continue saving regularly."
+            if savings < 0 :
+                tip = (
+                "Your expenses exceed income. "
+        "Focus on reducing your largest "
+        "expense category."
             )
 
             if largest_category:
@@ -430,7 +453,9 @@ def generate_chat_response(
                 db.query(
                     Transaction
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.type
                     == "debit"
@@ -529,7 +554,9 @@ def generate_chat_response(
                         Transaction.amount
                     )
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.category
                     == "Income"
@@ -545,7 +572,9 @@ def generate_chat_response(
                 db.query(
                     Transaction
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.category
                     == "Income"
@@ -587,12 +616,17 @@ def generate_chat_response(
                         Transaction.amount
                     ),
                 )
-
+                .filter(
+    Transaction.user_id == user_id
+)
                 .filter(
                     Transaction.type
                     == "debit"
                 )
 
+                .filter(
+                    Transaction.category!="Transfer"
+                )
                 .filter(
                     Transaction.merchant!= "Unknown"
                 )
@@ -640,19 +674,20 @@ def generate_chat_response(
                     ],
                 }
 
-        # ----------------------------------------
-        # DEFAULT
-        # ----------------------------------------
+# ----------------------------------------
+# GEMINI FINANCIAL RAG
+# ----------------------------------------
 
-        return {
-
-            "text":
-            "I could not understand "
-            "your financial query.",
-
-            "insightType":
-            "summary",
-        }
+        context = (
+                build_financial_context(
+        db,
+        user_id,
+    )
+        )
+        return answer_financial_question(
+            question = query,
+            context = context,
+        )
 
     finally:
 

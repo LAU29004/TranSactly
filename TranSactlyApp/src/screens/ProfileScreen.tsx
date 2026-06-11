@@ -9,9 +9,16 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Space, Radius, Font } from '../theme';
-import { mockProfile } from '../data/mockData';
-
+import { getUser } from '../services/auth/userStorage';
+import { useEffect, useState } from 'react';
+import {
+  Image,
+} from 'react-native';
+import {
+  fetchMe,
+} from '../services/api/userApi';
 interface MenuCardProps {
   meta: string;
   title: string;
@@ -39,10 +46,37 @@ const MenuCard: React.FC<MenuCardProps> = ({ meta, title, sub, iconChar, iconBg,
 );
 
 const ProfileScreen: React.FC = () => {
+  const [user, setUser] = useState<any>(null);
+
+useEffect(() => {
+  const loadUser = async () => {
+    const data = await getUser();
+    setUser(data);
+  };
+
+  loadUser();
+}, []);
+   const navigation = useNavigation<any>();
   const handleLogout = () =>
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => {} },
+      {
+  text: 'Logout',
+  style: 'destructive',
+onPress: async () => {
+
+  const { logout } = await import(
+    '../services/auth/logout'
+  );
+
+  await logout();
+
+  navigation.reset({
+    index: 0,
+    routes: [{ name: 'Login' }],
+  });
+},
+},
     ]);
 
   return (
@@ -61,69 +95,39 @@ const ProfileScreen: React.FC = () => {
         {/* Profile hero */}
         <View style={styles.profileHero}>
           <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarInitials}>AV</Text>
-            </View>
+<View style={styles.avatar}>
+  {user?.photo ? (
+    <Image
+      source={{
+        uri: user.photo,
+      }}
+      style={styles.avatarImage}
+    />
+  ) : (
+    <Text style={styles.avatarInitials}>
+      {user?.name?.charAt(0) || 'U'}
+    </Text>
+  )}
+</View>
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedGlyph}>✓</Text>
             </View>
           </View>
-          <Text style={styles.profileName}>{mockProfile.name}</Text>
-          <Text style={styles.profileEmail}>{mockProfile.email}</Text>
+<Text style={styles.profileName}>
+  {user?.name || 'User'}
+</Text>
+
+<Text style={styles.profileEmail}>
+  {user?.email || ''}
+</Text>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.75}>
             <Text style={styles.editBtnText}>EDIT PROFILE  →</Text>
           </TouchableOpacity>
         </View>
 
         {/* Menu cards */}
-        <View style={styles.menuGroup}>
-          <MenuCard
-            meta="CURRENT TIER"
-            title="Subscription"
-            sub={mockProfile.plan}
-            iconChar="◈"
-            iconBg="#1E2420"
-            iconFg={Colors.gold}
-            onPress={() => {}}
-          />
-          <MenuCard
-            meta="ALERT MANAGEMENT"
-            title="Notifications"
-            sub="Smart AI Alerts On"
-            iconChar="◉"
-            iconBg="#1A1E2A"
-            iconFg="#6B9BD5"
-            onPress={() => {}}
-          />
-          <MenuCard
-            meta="VAULT & SECURITY"
-            title="Privacy"
-            iconChar="◆"
-            iconBg="#2A1E1A"
-            iconFg="#D58B5B"
-            onPress={() => {}}
-          />
-        </View>
-
         {/* Account control list */}
         <View style={styles.listCard}>
-          <Text style={styles.listTitle}>Account Control</Text>
-          {[
-            { label: 'Preferences', glyph: '⊙' },
-            { label: 'Support Center', glyph: '?' },
-            { label: 'Legal Terms', glyph: '≡' },
-          ].map((item, i, arr) => (
-            <View key={item.label}>
-              <TouchableOpacity style={styles.listRow} activeOpacity={0.7}>
-                <View style={styles.listIconBox}>
-                  <Text style={styles.listGlyph}>{item.glyph}</Text>
-                </View>
-                <Text style={styles.listLabel}>{item.label}</Text>
-                <Text style={styles.listChevron}>›</Text>
-              </TouchableOpacity>
-              {i < arr.length - 1 && <View style={styles.listDivider} />}
-            </View>
-          ))}
         </View>
 
         {/* Logout */}
@@ -144,7 +148,6 @@ const ProfileScreen: React.FC = () => {
             Secure, private, and always ahead.
           </Text>
           <View style={styles.bannerDivider} />
-          <Text style={styles.bannerFooter}>© 2024 SOVEREIGN LEDGER GROUP</Text>
         </View>
 
       </ScrollView>
@@ -325,6 +328,11 @@ const styles = StyleSheet.create({
   bannerDesc: { ...Font.bodyS, color: Colors.textSecondary, lineHeight: 19 },
   bannerDivider: { height: 1, backgroundColor: Colors.border },
   bannerFooter: { ...Font.labelS, color: Colors.textMuted, textAlign: 'center' },
+  avatarImage: {
+  width: 86,
+  height: 86,
+  borderRadius: 43,
+},
 });
 
 export default ProfileScreen;
