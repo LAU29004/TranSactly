@@ -318,7 +318,7 @@ TOP MERCHANT
         )
     total_expenses = snapshot["expenses"]
 
-    context += "\n\nCATEGORY PERCENTAGES\n"
+    context += "\n\nCATEGORY PERcentAGES\n"
 
     for category, amount in categories:
         percent = round(
@@ -410,7 +410,7 @@ SAVINGS RATE
     # Recent Transactions
     # ----------------------------------------
 
-    context += "\n\nRECENT TRANSACTIONS\n"
+    context += "\n\nREcent TRANSACTIONS\n"
 
     for tx in recent_transactions:
 

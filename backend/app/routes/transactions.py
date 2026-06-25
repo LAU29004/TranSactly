@@ -10,7 +10,8 @@ from app.services.auth.dependencies import (
 from app.services.analytics.transaction_history_service import (
     get_recent_transactions,
 )
-
+from fastapi import Request
+from app.middleware.rate_limiter import limiter
 router = APIRouter(
     prefix="/api/v1",
     tags=["Transactions"],
@@ -18,8 +19,9 @@ router = APIRouter(
 
 
 @router.get("/transactions")
+@limiter.limit("120/minute")
 def get_transactions(
-
+    request:Request,
     current_user: User = Depends(
         get_current_user
     ),

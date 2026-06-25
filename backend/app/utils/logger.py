@@ -16,7 +16,7 @@ def setup_logger():
     )
 
     return logging.getLogger(
-        "TranSactlyAI"
+        "centfluence AI"
     )
 
 

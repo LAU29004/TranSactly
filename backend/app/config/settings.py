@@ -3,7 +3,7 @@ from pydantic_settings import (
 )
 
 from functools import lru_cache
-
+from pydantic import Field
 
 class Settings(BaseSettings):
 
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     API_VERSION: str
 
     MODEL_NAME: str
-
+    GROQ_MODEL: str
     CONFIDENCE_THRESHOLD: float
 
     RATE_LIMIT: str
@@ -20,8 +20,6 @@ class Settings(BaseSettings):
     ENVIRONMENT: str
 
     DATABASE_URL: str
-
-    GEMINI_API_KEY: str | None = None
 
     GROQ_API_KEY: str
 
@@ -43,3 +41,10 @@ def get_settings():
 
 
 settings = get_settings()
+
+ALLOWED_ORIGINS: list[str] = Field(
+    default=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+)

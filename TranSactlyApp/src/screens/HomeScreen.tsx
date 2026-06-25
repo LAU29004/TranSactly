@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import {
   View,
   FlatList,
@@ -6,103 +12,243 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
+import { Buffer } from 'buffer';
 import { parseSMSIntoTransactions } from '../services/readSms';
+import { type InsightObject, type ComparisonPeriod } from '../utils/insights';
 import TransactionCard from '../components/TransactionCard';
-import { mockProfile } from '../data/mockData';
 import { Colors, Space } from '../theme';
 import { useTransactions } from '../context/TransactionContext';
+import { downloadExcel } from '../services/api/exportApi';
 
 import {
   checkSmsPermission,
   requestSmsPermission,
   type PermState,
 } from '../services/smsPermissions';
-import { generateAIInsights , type ComparisonPeriod } from '../utils/insights';
-import {
-  calculateDashboardStats,
-  filterTransactionsByPeriod,
-  generateSpendingCategories,
-  generateEarningData,
-} from '../utils/dashboardCalculations';
-
+import { filterTransactionsByPeriod } from '../utils/dashboardCalculations';
+import { fetchHomeData } from '../services/api/homeApi';
 import HomeHeader from '../components/home/HomeHeader';
 import AIInsightsSection from '../components/home/AIInsightsSection';
 import ChartsSection from '../components/home/ChartsSection';
 import FloatingActionButton from '../components/home/FloatingActionButton';
 import EmptyState from '../components/home/EmptyState';
 import SecurityStatusCard from '../components/home/SecurityStatusCard';
-
 import styles from '../styles/HomeScreen.styles';
-
+import { fetchInsights } from '../services/api/insightsApi';
 const { width: SCREEN_W } = Dimensions.get('window');
+const getDateRange = (period: ComparisonPeriod) => {
+  const end = new Date();
 
+  const start = new Date();
+
+  switch (period) {
+    case 'month':
+      start.setMonth(end.getMonth() - 1);
+
+      break;
+
+    case 'sixMonths':
+      start.setMonth(end.getMonth() - 6);
+
+      break;
+
+    case 'year':
+      start.setFullYear(end.getFullYear() - 1);
+
+      break;
+  }
+
+  return {
+    startDate: start.toISOString(),
+
+    endDate: end.toISOString(),
+  };
+};
 const HomeScreen: React.FC = () => {
+  const [homeData, setHomeData] = useState<any>(null);
+  const [insightsData, setInsightsData] = useState<any>(null);
   const navigation = useNavigation<any>();
   const [permState, setPermState] = useState<PermState>('checking');
   const [comparisonPeriod, setComparisonPeriod] =
     useState<ComparisonPeriod>('month');
   const { transactions, setTransactions } = useTransactions();
-
+  const [page, setPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
   const heroFade = useRef(new Animated.Value(0)).current;
   const heroSlide = useRef(new Animated.Value(16)).current;
-
+  const [loadingMore, setLoadingMore] = useState(false);
   // Load transactions on mount
-console.log(
-  'HOME TRANSACTIONS:',
-  transactions,
-);
-
-useEffect(() => {
-
-  const loadTransactions = async () => {
-
+  // console.log(
+  //   'HOME TRANSACTIONS:',
+  //   transactions,
+  // );
+  const loadHomeData = async (period: ComparisonPeriod) => {
     try {
+      const { startDate, endDate } = getDateRange(period);
 
-      // Wait for permission
+      console.log('FETCHING HOME:', period);
 
-      if (permState !== 'granted') {
-        return;
-      }
+      const data = await fetchHomeData(startDate, endDate, page);
 
-      // Avoid duplicate reloads
+      console.log('HOME API:', data);
 
-      if (transactions.length > 0) {
-        return;
-      }
+      setHomeData((prev: any) => {
+        if (!prev || page === 1) {
+          return data;
+        }
 
-      const parsed =
-        await parseSMSIntoTransactions();
+        return {
+          ...data,
 
-      console.log(
-        'HOME TRANSACTIONS:',
-        parsed.length,
-      );
-
-      setTransactions(parsed);
-
-    } catch (e) {
-
-      console.log(
-        'HOME SMS LOAD ERROR:',
-        e,
-      );
+          recentTransactions: [
+            ...new Map(
+              [...prev.recentTransactions, ...data.recentTransactions].map(
+                tx => [tx.id, tx],
+              ),
+            ).values(),
+          ],
+        };
+      });
+      console.log('MONTHLY TREND:', data.monthlyTrend);
+    } catch (error) {
+      console.log('HOME API ERROR:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
+const handleExportExcel = async () => {
 
-  loadTransactions();
+  try {
 
-}, [permState]);
+    const {
+      startDate,
+      endDate,
+    } = getDateRange(
+      comparisonPeriod,
+    );
+
+    const file =
+      await downloadExcel(
+        new Date(startDate),
+        new Date(endDate),
+      );
+
+    const base64 =
+      Buffer.from(file).toString(
+        'base64',
+      );
+
+    const path =
+      `${RNFS.DownloadDirectoryPath}/centfluence_Transactions.xlsx`;
+
+    await RNFS.writeFile(
+      path,
+      base64,
+      'base64',
+    );
+
+    await Share.open({
+
+      url:
+        `file://${path}`,
+
+      type:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+  } catch (error) {
+
+    console.log(
+      'EXPORT ERROR:',
+      error,
+    );
+  }
+};
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+
+      setPage(1);
+
+      await loadHomeData(comparisonPeriod);
+      await loadInsights(comparisonPeriod);
+    } catch (error) {
+      console.log('REFRESH ERROR:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  const loadInsights = async (period: ComparisonPeriod) => {
+    try {
+      const { startDate, endDate } = getDateRange(period);
+
+      const data = await fetchInsights(new Date(startDate), new Date(endDate));
+
+      console.log('INSIGHTS API:', data);
+
+      setInsightsData(data);
+    } catch (error) {
+      console.log('INSIGHTS ERROR:', error);
+    }
+  };
+  useEffect(() => {
+    loadHomeData(comparisonPeriod);
+  }, [comparisonPeriod, page]);
+  useEffect(() => {
+    loadInsights(comparisonPeriod);
+  }, [comparisonPeriod]);
+  useEffect(() => {
+    setPage(1);
+  }, [comparisonPeriod]);
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        console.log('PERMISSION:', permState);
+
+        if (permState !== 'granted') {
+          return;
+        }
+
+        if (transactions.length > 0) {
+          return;
+        }
+
+        const parsed = await parseSMSIntoTransactions();
+
+        console.log('PARSED SMS COUNT:', parsed.length);
+        if (parsed.length > 0) {
+          setTransactions(parsed);
+        }
+      } catch (e) {
+        console.log('HOME SMS LOAD ERROR:', e);
+      }
+    };
+
+    loadTransactions();
+  }, [permState]);
 
   // Check SMS permission on mount
   useEffect(() => {
-    (async () => {
+    const initializePermission = async () => {
       const state = await checkSmsPermission();
-      setPermState(state);
-    })();
+
+      if (state === 'idle') {
+        const result = await requestSmsPermission();
+
+        setPermState(result);
+      } else {
+        setPermState(state);
+      }
+    };
+
+    initializePermission();
   }, []);
 
   // Animate hero card on mount
@@ -122,13 +268,22 @@ useEffect(() => {
   }, []);
 
   const handleRequestPermission = useCallback(async () => {
+    console.log('REQUEST BUTTON CLICKED');
+
     if (permState === 'denied') {
       const { Linking } = require('react-native');
+
       Linking.openSettings();
+
       return;
     }
+
     setPermState('checking');
+
     const result = await requestSmsPermission();
+
+    console.log('SMS RESULT:', result);
+
     setPermState(result);
   }, [permState]);
 
@@ -137,33 +292,105 @@ useEffect(() => {
     () => filterTransactionsByPeriod(transactions, comparisonPeriod),
     [transactions, comparisonPeriod],
   );
+  const dashboardStats = useMemo(() => {
+    return {
+      income: homeData?.totalIncome ?? 0,
 
-  const dashboardStats = useMemo(
-    () => calculateDashboardStats(filteredTransactions),
-    [filteredTransactions],
-  );
+      spending: homeData?.totalExpenses ?? 0,
 
-  const spendingCategories = useMemo(
-    () => generateSpendingCategories(filteredTransactions),
-    [filteredTransactions],
-  );
+      savings: homeData?.totalSavings ?? 0,
 
-  const earningData = useMemo(
-    () => generateEarningData(filteredTransactions),
-    [filteredTransactions],
-  );
+      savingsRate: homeData?.totalIncome
+        ? (homeData.totalSavings / homeData.totalIncome) * 100
+        : 0,
 
-  const currentInsights = useMemo(
-    () => generateAIInsights(filteredTransactions),
-    [filteredTransactions],
-  );
+      transactionCount: homeData?.recentTransactions?.length ?? 0,
+    };
+  }, [homeData]);
+
+  const spendingCategories = useMemo(() => {
+    if (!homeData?.categoryBreakdown) {
+      return [];
+    }
+
+    return homeData.categoryBreakdown.map((item: any) => ({
+      name: item.category,
+
+      amount: item.amount,
+
+      percent: item.percent ?? 0,
+    }));
+  }, [homeData]);
+
+  const earningData = useMemo(() => {
+    if (!homeData?.monthlyTrend) {
+      return [];
+    }
+
+    return homeData.monthlyTrend;
+  }, [homeData]);
+
+  const currentInsights = useMemo<InsightObject[]>(() => {
+    if (!insightsData) {
+      return [];
+    }
+
+    return [
+      {
+        icon: 'cash',
+        text: `Income ₹${insightsData.totalIncome}`,
+        change: '',
+        changePercent: 0,
+        category: 'Income',
+        type: 'info',
+      },
+
+      {
+        icon: 'credit-card',
+        text: `Spent ₹${insightsData.totalExpenses}`,
+        change: '',
+        changePercent: 0,
+        category: 'Spending',
+        type: 'warn',
+      },
+
+      {
+        icon: 'piggy-bank',
+        text: `Savings ₹${insightsData.totalSavings}`,
+        change: '',
+        changePercent: 0,
+        category: 'Savings',
+        type: insightsData.totalSavings < 0 ? 'alert' : 'info',
+      },
+      {
+        icon: 'trending-up',
+
+        text: `${homeData?.topCategory} accounts for most spending`,
+
+        change: homeData?.categoryBreakdown?.[0]
+          ? `₹${homeData.categoryBreakdown[0].amount}`
+          : '',
+
+        changePercent: homeData?.categoryBreakdown?.[0]?.percent ?? 0,
+
+        category: homeData?.topCategory,
+
+        type:
+          (homeData?.categoryBreakdown?.[0]?.percent ?? 0) > 50
+            ? 'alert'
+            : 'warn',
+      },
+    ];
+  }, [insightsData, homeData]);
 
   const renderHeader = () => (
     <View>
       <HomeHeader
         dashboardStats={dashboardStats}
+        homeData={homeData}
         heroFade={heroFade}
         heroSlide={heroSlide}
+        onExportExcel={handleExportExcel}
       />
       <AIInsightsSection
         insights={currentInsights}
@@ -173,9 +400,10 @@ useEffect(() => {
       <ChartsSection
         spendingCategories={spendingCategories}
         earningData={earningData}
-        hasTransactions={filteredTransactions.length > 0}
+        homeData={homeData}
+        hasTransactions={homeData?.recentTransactions?.length > 0}
         permState={permState}
-        transactionCount={transactions.length}
+        transactionCount={homeData?.recentTransactions?.length ?? 0}
       />
     </View>
   );
@@ -202,7 +430,7 @@ useEffect(() => {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
-        <View style={styles.loadingCenter}>
+        <View style={styles.loadingcenter}>
           <ActivityIndicator size="large" color={Colors.gold} />
         </View>
       </SafeAreaView>
@@ -213,8 +441,25 @@ useEffect(() => {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
       <FlatList
-        data={permState === 'granted' ? filteredTransactions : []}
-        keyExtractor={item => item.id}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.gold}
+          />
+        }
+        data={homeData?.recentTransactions ?? []}
+        onEndReached={() => {
+          if (loadingMore || !homeData?.pagination?.hasMore) {
+            return;
+          }
+
+          setLoadingMore(true);
+
+          setPage(prev => prev + 1);
+        }}
+        onEndReachedThreshold={0.5}
+        keyExtractor={item => item.id.toString()}
         renderItem={({ item }) => <TransactionCard transaction={item} />}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={

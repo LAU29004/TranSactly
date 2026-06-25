@@ -49,7 +49,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             ? 'SMS reading is only supported on Android. Connect your bank account to import transactions.'
             : isDenied
             ? 'SMS access was denied. Grant permission in device Settings.'
-            : 'Grant SMS permission so SmartSpend AI can detect your bank transactions automatically.'}
+            : 'Grant SMS permission so centfluence can detect your bank transactions automatically.'}
         </Text>
         {!isUnavailable && (
           <TouchableOpacity

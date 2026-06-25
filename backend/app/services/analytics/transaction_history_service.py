@@ -14,7 +14,6 @@ def get_recent_transactions(
 
     end_date: str | None = None,
 ):
-    print("CURRENT USER:", user_id)
     db = SessionLocal()
 
     try:

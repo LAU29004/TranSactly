@@ -52,6 +52,11 @@ def save_merchant_memory(
     )
 
     if existing:
+        if confidence > existing.confidence:
+            existing.category = category
+            existing.confidence = confidence
+            db.commit()
+            db.refresh(existing)
         return existing
 
     memory = MerchantMemory(

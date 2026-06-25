@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import { View, ScrollView, Text, Dimensions } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors, Space } from '../../theme';
-import { ComparisonPeriod, InsightObject } from '../../utils/insights';
+import {
+  type InsightObject,
+  type ComparisonPeriod,
+} from '../../utils/insights';
 import ComparisonPeriodSelector from './ComparisonPeriodSelector';
 import AIInsightCard from './AIInsightCard';
 import styles from '../../styles/home/AIInsightsSection.styles';

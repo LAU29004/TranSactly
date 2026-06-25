@@ -1,0 +1,146 @@
+/* ── NAV BASE ── */
+.fnav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.4s ease;
+}
+
+/* default — Sits dark on top of the hero view */
+.fnavDefault {
+  background: var(--navy);
+  border-bottom: 2px solid rgba(26,16,51,0.15);
+  padding: 0 64px; height: 68px;
+}
+
+/* scrolled — Remains dark, optional layout contraction */
+.fnavScrolled {
+  background: var(--navy);
+  border-bottom: 2px solid rgba(245,168,0,0.22);
+  padding: 0 64px; height: 60px;
+  box-shadow: 0 4px 24px rgba(14,9,32,0.35);
+}
+
+.fnavInner {
+  max-width: 1280px; margin: 0 auto;
+  height: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* ── LOGO ── */
+.fnavLogo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+}
+
+.fnavLogoText {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 22px; /* Matches .logo text sizing */
+  color: azure; /* Preserves the exact text color */
+  letter-spacing: -0.04em;
+  transition: color .3s;
+}
+
+/* Dynamic dot highlighting */
+.footerLogoDot { color: var(--amber); }
+
+/* ── DESKTOP LINKS ── */
+.fnavLinks {
+  display: flex; align-items: center; gap: 40px; /* Matches .navLinks gap */
+  list-style: none;
+}
+
+.fnavLinks a {
+  font-size: 14px; font-weight: 500;
+  color: var(--amber); opacity: 0.65; /* Matches .navLinks a */
+  text-decoration: none;
+  position: relative;
+  transition: opacity .2s;
+}
+
+.fnavLinks a:hover { opacity: 1 !important; }
+
+/* Animated underline matching .underlineHover style */
+.fnavLinks a::after {
+  content: '';
+  position: absolute; left: 0; bottom: -3px;
+  width: 0; height: 2px;
+  background: var(--amber);
+  transition: width 0.3s ease;
+}
+.fnavLinks a:hover::after { width: 100%; }
+
+/* ── CTA GROUP (Login / Action Button) ── */
+.fnavCta { display: flex; align-items: center; gap: 8px; }
+
+.navBtn {
+  background: var(--navy); color: var(--amber);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  border: none; border-radius: 6px;
+  padding: 10px 22px; cursor: pointer;
+  text-decoration: none;
+  transition: background .2s, transform .15s;
+}
+
+.navBtn:hover { background: var(--ink); transform: translateY(-1px); }
+
+/* ── HAMBURGER ── */
+.fnavHam {
+  display: none;
+  flex-direction: column; justify-content: center; align-items: center;
+  gap: 5px;
+  background: none; border: none; cursor: pointer;
+  width: 38px; height: 38px; padding: 4px;
+}
+
+.fnavHamBar {
+  display: block; width: 22px; height: 2px; border-radius: 2px;
+  background: var(--amber); /* Changed to accessible contrast indicator over dark backgrounds */
+  transition: all .3s ease;
+}
+
+.open1 { transform: rotate(45deg) translate(5px, 5px); }
+.open2 { opacity: 0; transform: scaleX(0); }
+.open3 { transform: rotate(-45deg) translate(5px, -5px); }
+
+/* ── MOBILE DRAWER ── */
+.fnavDrawer {
+  position: fixed; top: 60px; left: 0; right: 0; z-index: 99;
+  background: var(--navy);
+  border-bottom: 2px solid rgba(245,168,0,0.20);
+  padding: 20px 28px 28px;
+  display: flex; flex-direction: column; gap: 0;
+  transform-origin: top;
+  animation: drawerIn .25s ease forwards;
+}
+
+@keyframes drawerIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fnavDrawer a {
+  display: block;
+  font-size: 15px; font-weight: 500;
+  color: rgba(245,168,0,0.75);
+  text-decoration: none;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(245,168,0,0.10);
+  transition: color .2s;
+}
+
+.fnavDrawer a:hover { color: var(--amber); }
+
+.fnavDrawerCta {
+  margin-top: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* ── RESPONSIVE OVERRIDES ── */
+@media (max-width: 860px) {
+  .fnavDefault,
+  .fnavScrolled { padding: 0 24px; }
+  .fnavLinks,
+  .fnavCta { display: none; }
+  .fnavHam { display: flex; }
+}

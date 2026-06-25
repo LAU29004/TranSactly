@@ -1,0 +1,307 @@
+.ctaSection {
+  background: var(--amber);
+  padding: 72px 24px 96px;
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* Halftone dot field — matches Hero */
+.ctaDotField {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(26, 16, 51, 0.22) 1.3px, transparent 1.3px);
+  background-size: 20px 20px;
+}
+
+.ctaWrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ─── CARD ─── */
+.ctaCard {
+  position: relative;
+  background: var(--navy);
+  border: 2px solid rgba(245, 168, 0, 0.25);
+  border-radius: 24px;
+  overflow: hidden;
+  padding: 64px 40px;
+  text-align: center;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+/* Amber glow blob */
+.ctaGlow {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  height: 320px;
+  background: rgba(245, 168, 0, 0.12);
+  filter: blur(90px);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Grid overlay */
+.ctaGrid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image:
+    linear-gradient(rgba(245, 168, 0, 1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 168, 0, 1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Decorative circles */
+.ctaDecoA {
+  position: absolute;
+  left: 32px;
+  top: 32px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 168, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ctaDecoAInner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 168, 0, 0.3);
+}
+
+.ctaDecoB {
+  position: absolute;
+  right: 48px;
+  bottom: 48px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(245, 168, 0, 0.1);
+  border: 2px solid rgba(245, 168, 0, 0.2);
+}
+
+.ctaDecoC {
+  position: absolute;
+  right: 96px;
+  top: 40px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(245, 168, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .ctaDecoA,
+  .ctaDecoB,
+  .ctaDecoC {
+    display: none;
+  }
+}
+
+/* ─── CONTENT ─── */
+.ctaContent {
+  position: relative;
+  z-index: 1;
+}
+
+.ctaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 168, 0, 0.12);
+  border: 1.5px solid rgba(245, 168, 0, 0.3);
+  color: var(--amber3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 7px 14px 7px 10px;
+  border-radius: 4px;
+  margin-bottom: 28px;
+}
+
+.ctaBadgePip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber3);
+  animation: ctablink 2s ease-in-out infinite;
+}
+
+@keyframes ctablink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.ctaHeading {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(28px, 3.6vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: rgba(255, 252, 240, 0.72);
+  max-width: 640px;
+  margin: 0 auto 16px;
+}
+
+.ctaHeadingAccent {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.ctaHeadingAccent::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 70%;
+  height: 4px;
+  background: var(--amber);
+  border-radius: 3px;
+}
+
+.ctaSub {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(255, 252, 240, 0.5);
+  max-width: 480px;
+  margin: 0 auto 40px;
+}
+
+/* ─── BUTTONS ─── */
+.ctaBtns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.ctaBtnSolid {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--amber);
+  color: var(--navy);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 2px solid var(--amber);
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: background 0.2s, transform 0.18s, box-shadow 0.18s;
+}
+
+.ctaBtnSolid:hover {
+  background: var(--amber3);
+  border-color: var(--amber3);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.ctaBtnOutline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: rgba(255, 252, 240, 0.8);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 2px solid rgba(245, 168, 0, 0.28);
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: border-color 0.2s, background 0.2s, transform 0.18s, box-shadow 0.18s;
+}
+
+.ctaBtnOutline:hover {
+  border-color: rgba(245, 168, 0, 0.6);
+  background: rgba(245, 168, 0, 0.07);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+/* ─── TRUST BADGES ─── */
+.ctaTrust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.ctaTrust span {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(245, 168, 0, 0.5);
+  letter-spacing: 0.03em;
+}
+
+.ctaTrustRule {
+  width: 1px;
+  height: 16px;
+  background: rgba(245, 168, 0, 0.18);
+}
+.qrOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 9, 32, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.qrModal {
+  background: var(--navy);
+  border: 2px solid var(--amber);
+  padding: 32px;
+  border-radius: 16px;
+  text-align: center;
+  position: relative;
+  box-shadow: 8px 8px 0 var(--ink);
+  color: var(--white);
+}
+
+.qrClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 252, 240, 0.5);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.qrClose:hover {
+  color: var(--amber);
+}
+
+.qrWrapper {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-top: 16px;
+}

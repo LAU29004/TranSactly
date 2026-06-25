@@ -1,12 +1,35 @@
 import { apiClient } from './client';
 
-export const fetchHomeData =
-  async () => {
+export const fetchHomeData = async (
 
-    const response =
-      await apiClient.get(
-        '/api/v1/home',
-      );
+  startDate?: string,
 
-    return response.data;
-  };
+  endDate?: string,
+
+  page: number = 1,
+
+  limit: number = 10,
+
+) => {
+
+  const response =
+    await apiClient.get(
+
+      '/api/v1/home',
+
+      {
+        params: {
+
+          start_date: startDate,
+
+          end_date: endDate,
+
+          page,
+
+          limit,
+        },
+      },
+    );
+
+  return response.data;
+};

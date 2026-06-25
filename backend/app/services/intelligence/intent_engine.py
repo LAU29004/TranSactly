@@ -40,7 +40,6 @@ INTENT_PATTERNS = {
 
         "uber",
         "ola",
-        "metro",
         "fuel",
         "petrol",
         "diesel",
@@ -73,6 +72,7 @@ INTENT_PATTERNS = {
         "pizza",
         "burger",
         "food",
+        "wadeshwar",
         "dining",
     ],
 

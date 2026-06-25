@@ -20,6 +20,13 @@
 
   --muted:  #7A6030;
   --text:   #C8A96E;   /* warm parchment */
+
+  --amber2 : #E09700;
+  --amber3 : #FFD166;
+  --navy   : #1A1033;
+  --navy2  : #2C1D55;
+  --ink    : #0E0920;
+  --white  : #FFFCF0;
 }
 
 * {
@@ -33,10 +40,11 @@ html {
 }
 
 body {
-  background-color: var(--dark);
-  color: var(--text);
-  font-family: var(--font-body);
+  background: var(--amber);
+  color: var(--navy);
+  font-family: 'Outfit', sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* Noise overlay */

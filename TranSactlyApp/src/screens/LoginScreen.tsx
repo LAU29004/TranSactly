@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -31,8 +32,8 @@ const LoginScreen: React.FC = () => {
 
       const idToken = result.data?.idToken;
       if (!idToken || !result.data) {
-  return;
-}
+        return;
+      }
 
       if (!idToken) {
         console.log('NO ID TOKEN');
@@ -44,15 +45,15 @@ const LoginScreen: React.FC = () => {
 
       await saveToken(response.access_token);
 
-await saveUser({
-  id: response.user_id,
-  name: response.name,
-  email: response.email,
-  photo: result.data.user.photo,
-});
+      await saveUser({
+        id: response.user_id,
+        name: response.name,
+        email: response.email,
+        photo: result.data.user.photo,
+      });
 
       const token = await getToken();
-
+      console.log('TOKEN:', token);
       navigation.replace('MainTabs');
     } catch (error) {
       console.log('GOOGLE LOGIN ERROR', error);
@@ -73,18 +74,20 @@ await saveUser({
           </View>
         </View>
 
-        {/* Center hero */}
+        {/* center hero */}
         <View style={styles.hero}>
           <View style={styles.logoWrap}>
             <View style={styles.logoOuter}>
-              <View style={styles.logoInner}>
-                <Text style={styles.logoGlyph}>◈</Text>
-              </View>
+              <Image
+                source={require('../assets/screenLogo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
           </View>
 
           <Text style={styles.appName}>
-            SmartSpend<Text style={styles.appNameAccent}> AI</Text>
+            cent<Text style={styles.appNameAccent}>Fluence</Text>
           </Text>
           <Text style={styles.tagline}>Understand your money effortlessly</Text>
         </View>
@@ -128,7 +131,7 @@ await saveUser({
         </View>
 
         {/* Footer */}
-        <Text style={styles.footer}>CRAFTING WEALTH INTELLIGENCE © 2024</Text>
+        <Text style={styles.footer}>AN AI INTELLIGENT SYSTEM</Text>
       </View>
     </SafeAreaView>
   );
@@ -185,18 +188,16 @@ const styles = StyleSheet.create({
     gap: Space.lg,
   },
   logoWrap: {
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
   },
   logoOuter: {
-    width: 96,
-    height: 96,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.goldMuted,
-    borderWidth: 1,
-    borderColor: Colors.goldBorder,
-    alignItems: 'center',
+    width: 120,
+    height: 120,
+    backgroundColor: 'transparent', 
     justifyContent: 'center',
+    alignItems: 'center',
   },
   logoInner: {
     width: 72,
@@ -206,10 +207,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoGlyph: {
-    fontSize: 34,
-    color: Colors.textInverse,
-    fontWeight: '900',
+  logoImage: {
+    width: 90,          
+    height: 90,         
+    borderRadius: 45,   
   },
   appName: {
     fontSize: 36,

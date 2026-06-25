@@ -16,7 +16,7 @@ from app.db.base import (
     Base,
 )
 
-from datetime import datetime
+from datetime import datetime , timezone
 
 from sqlalchemy import DateTime
 
@@ -74,17 +74,17 @@ class Transaction(Base):
     
     transaction_date: Mapped[datetime] = mapped_column(
     DateTime,
-    default=datetime.utcnow,
+    default=datetime.now(timezone.utc),
 )
 
     created_at: Mapped[datetime] = mapped_column(
     DateTime,
-    default=datetime.utcnow,
+    default=datetime.now(timezone.utc),
 )
 
     updated_at: Mapped[datetime] = mapped_column(
     DateTime,
-    default=datetime.utcnow,
-    onupdate=datetime.utcnow,
+    default=datetime.now(timezone.utc),
+    onupdate=datetime.now(timezone.utc),
 )
 

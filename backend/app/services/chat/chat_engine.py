@@ -12,6 +12,10 @@ from app.services.chat.intent_detector import (
     detect_financial_intent,
 )
 
+from app.repositories.chat_history_repository import (
+    create_chat_message,
+)
+
 from app.services.chat.context_builder import (
     build_financial_context,
 )
@@ -19,6 +23,22 @@ from app.services.chat.context_builder import (
 from app.services.chat.groq_chat import (
     answer_financial_question,
 )
+
+
+def save_and_return(
+    db,
+    user_id,
+    response,
+):
+    create_chat_message(
+        db,
+        user_id,
+        "assistant",
+        response["text"],
+    )
+
+    return response
+
 
 def generate_chat_response(
     query: str,
@@ -28,14 +48,15 @@ def generate_chat_response(
     db = SessionLocal()
 
     try:
+        create_chat_message(
+            db,
+            user_id,
+            "user",
+            query,
+        )
 
         intent = detect_financial_intent(
             query
-        )
-
-        print(
-            "DETECTED INTENT:",
-            intent,
         )
 
         # ----------------------------------------
@@ -53,8 +74,8 @@ def generate_chat_response(
                     ),
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
 
                 .filter(
                     Transaction.type == "debit"
@@ -73,13 +94,17 @@ def generate_chat_response(
 
             if not categories:
 
-                return {
-                    "text":
-                    "No spending data found.",
+                return save_and_return(
+                    db,
+                    user_id,
+                    {
+                        "text":
+                        "No spending data found.",
 
-                    "insightType":
-                    "summary",
-                }
+                        "insightType":
+                        "summary",
+                    }
+                )
 
             sorted_categories = sorted(
                 categories,
@@ -119,28 +144,32 @@ def generate_chat_response(
                 for c in sorted_categories
             ]
 
-            return {
+            return save_and_return(
+                db,
+                user_id,
+                {
 
-                "text":
-                f"You spent most on "
-                f"{top[0]} "
-                f"(₹{int(top[1])}).",
+                    "text":
+                    f"You spent most on "
+                    f"{top[0]} "
+                    f"(₹{int(top[1])}).",
 
-                "insightType":
-                "spending",
+                    "insightType":
+                    "spending",
 
-                "summary": {
+                    "summary": {
 
-                    "topCategory":
-                    top[0],
+                        "topCategory":
+                        top[0],
 
-                    "amount":
-                    int(top[1]),
-                },
+                        "amount":
+                        int(top[1]),
+                    },
 
-                "bars":
-                bars,
-            }
+                    "bars":
+                    bars,
+                }
+            )
 
         # ----------------------------------------
         # CATEGORIES
@@ -157,8 +186,8 @@ def generate_chat_response(
                     ),
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.type == "debit"
                 )
@@ -176,14 +205,18 @@ def generate_chat_response(
 
             if not categories:
 
-                return {
+                return save_and_return(
+                    db,
+                    user_id,
+                    {
 
-                    "text":
-                    "No category data found.",
+                        "text":
+                        "No category data found.",
 
-                    "insightType":
-                    "summary",
-                }
+                        "insightType":
+                        "summary",
+                    }
+                )
 
             total_spending = sum(
                 float(c[1])
@@ -216,19 +249,23 @@ def generate_chat_response(
                 for c in categories
             ]
 
-            return {
+            return save_and_return(
+                db,
+                user_id,
+                {
 
-                "text":
-                f"You have spending across "
-                f"{len(category_data)} "
-                f"categories.",
+                    "text":
+                    f"You have spending across "
+                    f"{len(category_data)} "
+                    f"categories.",
 
-                "insightType":
-                "spending",
+                    "insightType":
+                    "spending",
 
-                "bars":
-                category_data,
-            }
+                    "bars":
+                    category_data,
+                }
+            )
 
         # ----------------------------------------
         # SUBSCRIPTIONS
@@ -245,8 +282,8 @@ def generate_chat_response(
                     ),
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.intent
                     == "subscription"
@@ -279,19 +316,23 @@ def generate_chat_response(
                 for m in merchants
             ]
 
-            return {
+            return save_and_return(
+                db,
+                user_id,
+                {
 
-                "text":
-                f"I detected "
-                f"{len(merchant_data)} "
-                f" recurring subscriptions.",
+                    "text":
+                    f"I detected "
+                    f"{len(merchant_data)} "
+                    f" recurring subscriptions.",
 
-                "insightType":
-                "subscriptions",
+                    "insightType":
+                    "subscriptions",
 
-                "merchants":
-                merchant_data,
-            }
+                    "merchants":
+                    merchant_data,
+                }
+            )
 
         # ----------------------------------------
         # SAVINGS
@@ -307,8 +348,8 @@ def generate_chat_response(
                     )
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.category
                     == "Income"
@@ -327,8 +368,8 @@ def generate_chat_response(
                     )
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.type
                     == "debit"
@@ -357,8 +398,8 @@ def generate_chat_response(
                     ),
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.type
                     == "debit"
@@ -420,27 +461,31 @@ def generate_chat_response(
                         "to your spending."
                     )
 
-            return {
+            return save_and_return(
+                db,
+                user_id,
+                {
 
-                "text":
-                f"Your current savings "
-                f"are ₹{int(savings)}.",
+                    "text":
+                    f"Your current savings "
+                    f"are ₹{int(savings)}.",
 
-                "insightType":
-                "savings",
+                    "insightType":
+                    "savings",
 
-                "savings": {
+                    "savings": {
 
-                    "amount":
-                    int(savings),
+                        "amount":
+                        int(savings),
 
-                    "tip":
+                        "tip":
+                        tip,
+                    },
+
+                    "savingsTip":
                     tip,
-                },
-
-                "savingsTip":
-                tip,
-            }
+                }
+            )
 
         # ----------------------------------------
         # ANOMALY
@@ -454,8 +499,8 @@ def generate_chat_response(
                     Transaction
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.type
                     == "debit"
@@ -471,14 +516,18 @@ def generate_chat_response(
 
             if not debits:
 
-                return {
+                return save_and_return(
+                    db,
+                    user_id,
+                    {
 
-                    "text":
-                    "No spending transactions found.",
+                        "text":
+                        "No spending transactions found.",
 
-                    "insightType":
-                    "summary",
-                }
+                        "insightType":
+                        "summary",
+                    }
+                )
 
             avg_spend = (
 
@@ -506,40 +555,48 @@ def generate_chat_response(
 
             if anomaly:
 
-                return {
+                return save_and_return(
+                    db,
+                    user_id,
+                    {
+
+                        "text":
+                        "I detected an unusual transaction worth reviewing.",
+
+                        "insightType":
+                        "anomaly",
+
+                        "anomaly": {
+
+                            "merchant":
+                            anomaly.merchant,
+
+                            "description":
+                            anomaly.message,
+
+                            "amount":
+                            int(
+                                anomaly.amount
+                            ),
+
+                            "risk":
+                            "medium",
+                        },
+                    }
+                )
+
+            return save_and_return(
+                db,
+                user_id,
+                {
 
                     "text":
-                    "I detected an unusual transaction worth reviewing.",
+                    "No suspicious transactions detected.",
 
                     "insightType":
-                    "anomaly",
-
-                    "anomaly": {
-
-                        "merchant":
-                        anomaly.merchant,
-
-                        "description":
-                        anomaly.message,
-
-                        "amount":
-                        int(
-                            anomaly.amount
-                        ),
-
-                        "risk":
-                        "medium",
-                    },
+                    "summary",
                 }
-
-            return {
-
-                "text":
-                "No suspicious transactions detected.",
-
-                "insightType":
-                "summary",
-            }
+            )
 
         # ----------------------------------------
         # INCOME
@@ -555,8 +612,8 @@ def generate_chat_response(
                     )
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.category
                     == "Income"
@@ -573,8 +630,8 @@ def generate_chat_response(
                     Transaction
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.category
                     == "Income"
@@ -583,24 +640,28 @@ def generate_chat_response(
                 .count()
             )
 
-            return {
+            return save_and_return(
+                db,
+                user_id,
+                {
 
-                "text":
-                f"Your total income "
-                f"is ₹{int(income)}.",
+                    "text":
+                    f"Your total income "
+                    f"is ₹{int(income)}.",
 
-                "insightType":
-                "income",
+                    "insightType":
+                    "income",
 
-                "income": {
+                    "income": {
 
-                    "total":
-                    int(income),
+                        "total":
+                        int(income),
 
-                    "credits":
-                    credit_count,
-                },
-            }
+                        "credits":
+                        credit_count,
+                    },
+                }
+            )
 
         # ----------------------------------------
         # MERCHANT INSIGHT
@@ -617,8 +678,8 @@ def generate_chat_response(
                     ),
                 )
                 .filter(
-    Transaction.user_id == user_id
-)
+                    Transaction.user_id == user_id
+                )
                 .filter(
                     Transaction.type
                     == "debit"
@@ -646,43 +707,47 @@ def generate_chat_response(
 
             if merchant_spending:
 
-                return {
+                return save_and_return(
+                    db,
+                    user_id,
+                    {
 
-                    "text":
-                    f"You spend most at "
-                    f"{merchant_spending[0]}.",
+                        "text":
+                        f"You spend most at "
+                        f"{merchant_spending[0]}.",
 
-                    "insightType":
-                    "merchant",
+                        "insightType":
+                        "merchant",
 
-                    "merchants": [
+                        "merchants": [
 
-                        {
+                            {
 
-                            "name":
-                            merchant_spending[0],
+                                "name":
+                                merchant_spending[0],
 
-                            "category":
-                            "Top Merchant",
+                                "category":
+                                "Top Merchant",
 
-                            "amount":
-                            f"₹{int(merchant_spending[1])}",
+                                "amount":
+                                f"₹{int(merchant_spending[1])}",
 
-                            "color":
-                            "#4D9EF5",
-                        }
-                    ],
-                }
+                                "color":
+                                "#4D9EF5",
+                            }
+                        ],
+                    }
+                )
 
-# ----------------------------------------
-# GEMINI FINANCIAL RAG
-# ----------------------------------------
+        # ----------------------------------------
+        # GEMINI FINANCIAL RAG
+        # ----------------------------------------
 
         context = (
-                build_financial_context(
-        db,
-        user_id,
-    )
+            build_financial_context(
+                db,
+                user_id,
+            )
         )
         return answer_financial_question(
             question = query,
@@ -692,3 +757,4 @@ def generate_chat_response(
     finally:
 
         db.close()
+

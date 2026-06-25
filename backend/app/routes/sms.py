@@ -33,8 +33,6 @@ router = APIRouter()
 )
 
 @limiter.limit("10/minute")
-
-
 async def analyze_sms(
 
     request: Request,

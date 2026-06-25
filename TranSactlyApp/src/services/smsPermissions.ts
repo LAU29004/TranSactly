@@ -8,9 +8,9 @@ export const requestSmsPermission = async (): Promise<PermState> => {
     const result = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.READ_SMS,
       {
-        title: 'SmartSpend AI — SMS Access',
+        title: 'centfluence — SMS Access',
         message:
-          'SmartSpend AI reads your bank SMS messages to detect and categorise transactions automatically. No messages leave your device.',
+          'centfluence reads your bank SMS messages to detect and categorise transactions automatically. No messages leave your device.',
         buttonPositive: 'Allow Access',
         buttonNegative: 'Not Now',
       },

@@ -12,7 +12,9 @@ import ProfileScreen from '../screens/ProfileScreen';
 import { Colors, Radius, Font } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import SplashScreen from '../screens/SplashScreen';
+import TranSactlyOnboardingScreen from '../screens/TranSactlyOnboarding';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import TranSactlyOnboarding from '../screens/TranSactlyOnboarding';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -708,6 +710,10 @@ const AppNavigator: React.FC = () => {
           headerShown: false,
         }}
       >
+        <Stack.Screen
+          name="Onboarding"
+          component={TranSactlyOnboardingScreen}
+        />
         <Stack.Screen name="Splash" component={SplashScreen} />
 
         <Stack.Screen name="Login" component={LoginScreen} />

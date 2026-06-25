@@ -1,10 +1,10 @@
 const stats = [
-  { value: '500K+', label: 'Downloads on App Store' },
-  { value: '4.8★', label: 'Rating out of 5' },
-  { value: '$2B+', label: 'Transactions Processed' },
-  { value: '150+', label: 'Countries Supported' },
-  { value: '99.9%', label: 'Uptime Guaranteed' },
-  { value: '24/7', label: 'Customer Support' },
+  { value: 'AI', label: 'Financial Assistant' },
+  { value: 'Smart', label: 'Transaction Categorization' },
+  { value: 'Live', label: 'Analytics Dashboard' },
+  { value: 'Auto', label: 'Subscription Detection' },
+  { value: 'Secure', label: 'Google Authentication' },
+  { value: 'PDF/Excel', label: 'Report Export' },
 ]
 
 export default function StatsBar() {

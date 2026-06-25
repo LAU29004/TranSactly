@@ -16,9 +16,18 @@ from app.services.intelligence.merchant_priors import (
     MERCHANT_PRIORS,
 )
 
-from app.services.llm.gemini_service import (
+from app.services.llm.groq_llm_service import (
     classify_merchant,
 )
+
+from app.services.intelligence.merchant_intelligence import (
+    MERCHANT_INTELLIGENCE,
+)
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 # --------------------------------------------------
 # LOAD EMBEDDING MODEL
@@ -95,6 +104,7 @@ KEYWORD_CATEGORIES = {
         "foods",
         "hotel",
         "restaurant",
+        "wadeshwar",
         "cafe",
         "sweet",
         "sweets",
@@ -112,8 +122,10 @@ KEYWORD_CATEGORIES = {
 
         "petrol",
         "fuel",
+        "metro rail",
+        "metro ticket",
+        "metro ride",
         "transport",
-        "metro",
         "bus",
         "rail",
         "railway",
@@ -186,6 +198,12 @@ KEYWORD_CATEGORIES = {
     "steel",
     "pipes",
     "electrical",
+    "furniture",
+    "interior",
+    "decor",
+    "renovation",
+    "wood",
+    "plywood",
 ]
 }
 
@@ -248,6 +266,12 @@ BUSINESS_KEYWORDS = {
     "cafe",
     "sweet",
     "sweets",
+    "wadeshwar",
+    "annapurna",
+    "mahalaxmi",
+    "sattvik",
+    "bigtree",
+    "bata",
     "bakery",
     "mart",
     "store",
@@ -269,13 +293,11 @@ BUSINESS_KEYWORDS = {
     "university",
     "school",
     "institute",
-
     "hospital",
     "clinic",
     "medical",
     "doctor",
     "pharmacy",
-
     "electricity",
     "water",
     "gas",
@@ -283,6 +305,19 @@ BUSINESS_KEYWORDS = {
     "internet",
     "mobile",
     "utility",
+    "enterprises",
+    "enterprise",
+    "solutions",
+    "services",
+    "associates",
+    "industries",
+    "traders",
+    "agency",
+    "agencies",
+    "consultancy",
+    "consulting",
+    "technologies",
+    "tech",
 }
 
 
@@ -349,22 +384,27 @@ def categorize_transaction(
 
             "source": "credit_rule",
         }
+    
+    merchant_upper = merchant.upper()
+    if merchant_upper in MERCHANT_INTELLIGENCE:
+        return {
 
-    print("\n" + "=" * 60)
-    print("CATEGORIZATION START")
-    print("MERCHANT :", merchant)
-    print("INTENT   :", intent)
-    print("MESSAGE  :", message[:150])
-    print("=" * 60)
+        "category":
+        MERCHANT_INTELLIGENCE[
+            merchant_upper
+        ],
+
+        "confidence":
+        1.0,
+
+        "source":
+        "merchant_intelligence",
+    }
     # --------------------------------------------------
     # MERCHANT PRIORS
     # --------------------------------------------------
 
     if merchant in MERCHANT_PRIORS:
-        print("SOURCE => MERCHANT_PRIOR |",
-            merchant,
-            "=>",
-            MERCHANT_PRIORS[merchant],)
 
         return {
 
@@ -389,18 +429,13 @@ def categorize_transaction(
     )
 
     if keyword_category:
-        print(        "SOURCE => KEYWORD_RULE |",
-        merchant,
-        "=>",
-        keyword_category,)
 
         save_merchant_memory(
-
-    db=db,
-    user_id=user_id,
-    merchant=merchant,
-    category=keyword_category,
-    confidence=0.95,
+        db=db,
+        user_id=user_id,
+        merchant=merchant,
+        category=keyword_category,
+        confidence=0.95,
         )
 
         return {
@@ -430,10 +465,6 @@ def categorize_transaction(
         if existing_memory.category in ["Transfer" , "Others"]:
             existing_memory = None
     if existing_memory:
-        print( "SOURCE => DATABASE_MEMORY |",
-        merchant,
-        "=>",
-        existing_memory.category,)
 
         return {
 
@@ -454,9 +485,6 @@ def categorize_transaction(
     if is_person_name(
         merchant
     ):
-        print(        "SOURCE => PERSON_RULE |",
-        merchant,
-        "=> Transfer",)
 
         return {
 
@@ -519,14 +547,13 @@ def categorize_transaction(
 
                 category_embedding,
             )[0][0]
-
+        intent_bonus = 0.0
         final_score = (
+            0.25 * float(msg_score)
 
-            0.4 * float(msg_score)
-
-            + 0.6 * float(
-                merchant_score
-            )
+    + 0.55 * float(
+        merchant_score
+    )  + 0.20 * intent_bonus
         )
 
         # Intent boosts
@@ -535,43 +562,43 @@ def categorize_transaction(
             intent == "salary"
             and category == "Income"
         ):
-            final_score += 0.4
+            intent_bonus += 0.4
 
         if (
             intent == "subscription"
             and category == "Entertainment"
         ):
-            final_score += 0.3
+            intent_bonus += 0.3
 
         if (
             intent == "shopping"
             and category == "Shopping"
         ):
-            final_score += 0.3
+            intent_bonus += 0.3
 
         if (
             intent == "food"
             and category == "Food"
         ):
-            final_score += 0.4
+            intent_bonus += 0.4
 
         if (
             intent == "travel"
             and category == "Travel"
         ):
-            final_score += 0.3
+            intent_bonus += 0.3
 
         if (
             intent == "bill"
             and category == "Bills"
         ):
-            final_score += 0.3
+            intent_bonus += 0.3
 
         if (
             intent == "transfer"
             and category == "Transfer"
         ):
-            final_score += 0.1
+            intent_bonus += 0.1
 
         scores[category] = final_score
 
@@ -605,9 +632,9 @@ def categorize_transaction(
 
     merchant=merchant,
 
-    category=keyword_category,
+    category=best_category,
 
-    confidence=0.95,
+    confidence=confidence,
         )
 
     # --------------------------------------------------
@@ -679,22 +706,12 @@ def categorize_transaction(
                     "gemini_memory",
                 }
 
-        except Exception as e:
-
-            print(
-                "GEMINI ERROR:",
-                str(e),
-            )
+        except Exception:
+            logger.exception("Transaction failed")
 
     # --------------------------------------------------
     # SEMANTIC RESULT
     # --------------------------------------------------
-    print("SOURCE => SEMANTIC_AI |",
-    merchant,
-    "=>",
-    best_category,
-    "| confidence =",
-    round(confidence, 3),)
     return {
 
         "category":

@@ -1,0 +1,228 @@
+.footer {
+  background: var(--navy);
+  border-top: 3px solid var(--ink);
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle halftone on dark — navy-on-navy tint */
+.footer-dot-field {
+  position: absolute; 
+  inset: 0; 
+  pointer-events: none; 
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(245,168,0,0.06) 1.3px, transparent 1.3px);
+  background-size: 20px 20px;
+}
+
+.footer-inner {
+  position: relative; 
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 64px 24px 36px;
+}
+
+/* ─── MAIN GRID ─── */
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 48px;
+}
+
+@media (max-width: 860px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .footer-brand { 
+    grid-column: 1 / -1; 
+  }
+}
+
+@media (max-width: 520px) {
+  .footer-grid { 
+    grid-template-columns: 1fr; 
+  }
+  .footer-brand { 
+    grid-column: auto; 
+  }
+}
+
+/* ─── BRAND ─── */
+.footer-brand {}
+
+.footer-logo {
+  display: flex; 
+  align-items: center; 
+  gap: 10px;
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.footer-logo-icon {
+  width: 36px; 
+  height: 36px;
+  border-radius: 8px;
+  background: var(--amber);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  box-shadow: 3px 3px 0 var(--ink);
+  flex-shrink: 0;
+}
+
+.footer-logo-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; 
+  font-size: 20px;
+  color: var(--white);
+  letter-spacing: -0.04em;
+}
+
+.footer-logo-dot { 
+  color: var(--amber); 
+}
+
+.footer-tagline {
+  font-size: 13px; 
+  font-weight: 300; 
+  line-height: 1.75;
+  color: rgba(255,252,240,0.38);
+  max-width: 280px;
+  margin-bottom: 24px;
+}
+
+/* Download buttons */
+.footer-dl-row { 
+  display: flex; 
+  gap: 10px; 
+  flex-wrap: wrap; 
+}
+
+.footer-dl-btn {
+  display: inline-flex; 
+  align-items: center; 
+  gap: 8px;
+  background: rgba(245,168,0,0.08);
+  border: 1.5px solid rgba(245,168,0,0.22);
+  color: rgba(255,252,240,0.75);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; 
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.18s, box-shadow 0.18s;
+}
+
+.footer-dl-btn:hover {
+  border-color: rgba(245,168,0,0.55);
+  color: var(--amber);
+  background: rgba(245,168,0,0.12);
+  transform: translate(-2px,-2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+/* ─── LINK COLUMNS ─── */
+.footer-col-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px; 
+  font-weight: 700;
+  letter-spacing: 0.1em; 
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 18px;
+}
+
+.footer-link-list {
+  list-style: none; 
+  padding: 0; 
+  margin: 0;
+  display: flex; 
+  flex-direction: column; 
+  gap: 12px;
+}
+
+.footer-link {
+  font-size: 13px; 
+  font-weight: 400;
+  color: rgba(255,252,240,0.4);
+  text-decoration: none;
+  transition: color 0.18s;
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px;
+}
+
+.footer-link::before {
+  content: '';
+  display: inline-block;
+  width: 4px; 
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(245,168,0,0.3);
+  flex-shrink: 0;
+  transition: background 0.18s;
+}
+
+.footer-link:hover { 
+  color: var(--amber3); 
+}
+
+.footer-link:hover::before { 
+  background: var(--amber3); 
+}
+
+/* ─── BOTTOM BAR ─── */
+.footer-bottom {
+  border-top: 1.5px solid rgba(245,168,0,0.12);
+  padding-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-copy {
+  font-size: 12px; 
+  font-weight: 400;
+  color: rgba(255,252,240,0.28);
+  letter-spacing: 0.02em;
+}
+
+.footer-copy strong {
+  color: rgba(245,168,0,0.5);
+  font-weight: 600;
+}
+
+.footer-socials {
+  display: flex; 
+  gap: 10px;
+}
+
+.footer-social-btn {
+  width: 32px; 
+  height: 32px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(245,168,0,0.18);
+  background: rgba(245,168,0,0.06);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  text-decoration: none;
+  color: rgba(255,252,240,0.4);
+  transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.18s;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.footer-social-btn:hover {
+  border-color: rgba(245,168,0,0.5);
+  color: var(--amber);
+  background: rgba(245,168,0,0.12);
+  transform: translate(-1px,-1px);
+}

@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💸 TranSactly AI
+# 💸 centfluence AI
 
 ### AI-Powered Personal Finance Assistant for Android
 
@@ -23,7 +23,7 @@ Most Indians receive 10–30 banking SMS messages every week — UPI alerts, ban
 
 Manual expense tracking apps require you to log every transaction yourself. Bank apps show raw statements with no intelligence. Budgeting tools require bank integrations that most Indian banks don't support.
 
-**TranSactly AI solves this by going directly to the source — your SMS inbox — and doing all the heavy lifting automatically.**
+**centfluence AI solves this by going directly to the source — your SMS inbox — and doing all the heavy lifting automatically.**
 
 ---
 
@@ -434,7 +434,7 @@ EXPO_PUBLIC_API_URL=http://YOUR_LOCAL_IP:8000
 - API keys are stored in `.env` files and never committed to version control
 - Android SMS permissions are requested at runtime and can be revoked at any time
 
-> **TranSactly AI is designed as a self-hosted, privacy-first application.**
+> **centfluence AI is designed as a self-hosted, privacy-first application.**
 
 ---
 

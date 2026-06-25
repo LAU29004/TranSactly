@@ -1,0 +1,249 @@
+/* ── SECTION ── */
+.faqSection {
+  background: var(--amber);
+  position: relative;
+  overflow: hidden;
+  padding: 96px 24px 120px;
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.faqDotField {
+  position: absolute; 
+  inset: 0; 
+  pointer-events: none; 
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(26,16,51,0.22) 1.3px, transparent 1.3px);
+  background-size: 20px 20px;
+}
+
+.faqInner {
+  position: relative; 
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── HEADER ── */
+.faqHeader {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.faqBadge {
+  display: inline-flex; 
+  align-items: center; 
+  gap: 8px;
+  background: var(--navy);
+  color: var(--amber3);
+  font-size: 11px; 
+  font-weight: 700;
+  letter-spacing: 0.14em; 
+  text-transform: uppercase;
+  padding: 7px 14px 7px 10px;
+  border-radius: 4px;
+  margin-bottom: 28px;
+}
+
+.faqBadgePip {
+  width: 8px; 
+  height: 8px; 
+  border-radius: 50%;
+  background: var(--amber3);
+  animation: faqblink 2s ease-in-out infinite;
+}
+
+@keyframes faqblink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.faqHeading {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(30px, 3.8vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: rgba(255,255,255,0.68);
+  margin-bottom: 16px;
+}
+
+.faqHeadingAccent {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.faqHeadingAccent::after {
+  content: '';
+  position: absolute; 
+  left: 0; 
+  bottom: 0;
+  width: 70%; 
+  height: 4px;
+  background: var(--ink);
+  border-radius: 3px;
+}
+
+.faqSub {
+  font-size: 20px; 
+  font-weight: 300; 
+  line-height: 1.7;
+  color: rgba(0,0,0,0.91);
+}
+
+.faqRule {
+  width: 72px; 
+  height: 5px;
+  background: var(--ink);
+  border-radius: 3px;
+  margin: 0 auto 52px;
+}
+
+/* ── HORIZONTAL STEP TIMELINE GRID ── */
+.faqList {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 24px;
+  margin-bottom: 56px;
+  align-items: start;
+}
+
+/* Base Hidden State */
+.faqItem {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+/* Revealed State */
+.faqItemVisible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── TOP GRAPHICS CONNECTOR ── */
+.faqStepTop {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.faqStepNumber {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  z-index: 2;
+  box-shadow: 3px 3px 0 var(--ink);
+  border: 2px solid rgba(245, 168, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.faqStepLine {
+  height: 3px;
+  flex-grow: 1;
+  background: var(--ink);
+  opacity: 0.25;
+  margin-left: 12px;
+}
+
+/* Hide line on final block element */
+.faqItem:last-child .faqStepLine {
+  display: none;
+}
+
+/* ── THE STEP CARD BLOCK ── */
+.faqBody {
+  background: var(--navy);
+  border: 2px solid rgba(245, 168, 0, 0.18);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.faqBody:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0 var(--ink);
+  border-color: rgba(245, 168, 0, 0.45);
+}
+
+.faqQuestion {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--amber);
+  margin: 0 0 10px 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.faqAnswer {
+  font-size: 12.5px;
+  line-height: 1.6;
+  font-weight: 300;
+  color: rgba(255, 252, 240, 0.65);
+  margin: 0;
+}
+
+/* ── ACTION TRIGGER CONTAINER ── */
+.faqActionSpace {
+  min-height: 54px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.faqNextBtn {
+  background: var(--navy);
+  color: var(--amber);
+  border: 2px solid var(--ink);
+  padding: 14px 32px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+
+.faqNextBtn:hover {
+  background: var(--navy2);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.faqNextBtn:active {
+  transform: translate(0, 0);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+/* Responsiveness tweaks */
+@media (max-width: 1100px) {
+  .faqList {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .faqList {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .faqStepTop { margin-bottom: 12px; }
+  .faqStepLine { display: none; }
+}

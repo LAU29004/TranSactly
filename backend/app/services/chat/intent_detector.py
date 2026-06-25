@@ -151,11 +151,6 @@ def detect_financial_intent(
 
             best_intent = intent
 
-    print(
-        f"CHAT INTENT => "
-        f"{best_intent} "
-        f"({best_score:.3f})"
-    )
 
     if best_score < 0.70:
 

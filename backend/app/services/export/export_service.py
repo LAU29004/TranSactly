@@ -1,22 +1,35 @@
 from io import BytesIO
+from datetime import datetime
 
 from openpyxl import Workbook
 
-from fastapi.responses import StreamingResponse
+from fastapi.responses import (
+    StreamingResponse,
+)
 
-from app.db.session import SessionLocal
-from app.models.transaction import Transaction
+from app.db.session import (
+    SessionLocal,
+)
+
+from app.models.transaction import (
+    Transaction,
+)
 
 
 def export_transactions_excel(
-    start_date=None,
-    end_date=None,
+    user_id: int,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
 ):
     db = SessionLocal()
 
     try:
 
-        query = db.query(Transaction)
+        query = db.query(
+            Transaction
+        ).filter(
+            Transaction.user_id == user_id
+        )
 
         if start_date:
             query = query.filter(
@@ -33,6 +46,7 @@ def export_transactions_excel(
         ).all()
 
         wb = Workbook()
+
         ws = wb.active
         ws.title = "Transactions"
 
@@ -61,7 +75,9 @@ def export_transactions_excel(
             ])
 
         output = BytesIO()
+
         wb.save(output)
+
         output.seek(0)
 
         return StreamingResponse(

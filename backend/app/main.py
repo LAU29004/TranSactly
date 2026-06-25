@@ -10,7 +10,9 @@ from slowapi.middleware import (
     SlowAPIMiddleware,
 )
 
-from slowapi import _rate_limit_exceeded_handler
+from app.middleware.rate_limit_handler import (
+    custom_rate_limit_handler,
+)
 
 from app.routes.insights import (
     router as insights_router,
@@ -54,19 +56,49 @@ from app.routes.auth import (
 from app.routes.user import (
     router as user_router,
 )
+from fastapi.middleware.cors import CORSMiddleware
+from app.routes.dashboard import (
+    router as dashboard_router,
+)
+
+from app.routes.analytics import (
+    router as analytics_router
+)
+
+from app.routes.subscriptions import (
+    router as subscriptions_router,
+)
+from app.routes.ai import (
+    router as ai_router,
+)
+
+from app.middleware.security_headers import (
+    SecurityHeadersMiddleware,
+)
+from app.config.settings import settings
+
 app = FastAPI()
-print(Base.metadata.tables.keys())
+app.add_middleware(
+    SecurityHeadersMiddleware
+)
+
 Base.metadata.create_all(
     bind=engine
 )
 
 app.state.limiter = limiter
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.add_exception_handler(
-
     RateLimitExceeded,
-
-    _rate_limit_exceeded_handler,
+    custom_rate_limit_handler,
 )
 
 app.add_middleware(
@@ -106,6 +138,18 @@ app.include_router(
 app.include_router(
     user_router
 )
+app.include_router(
+    dashboard_router
+)
+app.include_router(
+    analytics_router
+)
+app.include_router(
+    subscriptions_router
+)
+app.include_router(
+    ai_router
+)
 app.add_exception_handler(
 
     Exception,
@@ -119,5 +163,5 @@ async def root():
 
     return {
         "message":
-        "TranSactly AI Backend Running"
+        "centfluence AI Backend Running"
     }

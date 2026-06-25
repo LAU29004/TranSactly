@@ -19,90 +19,84 @@ import {
   ActivityIndicator,
   ScrollView,
   useWindowDimensions,
+  Alert,
 } from 'react-native';
-
-import { BarChart } from 'react-native-gifted-charts';
+import uuid from 'react-native-uuid';
 import { fetchAIInsight } from '../services/api/chatApi';
-
+import { secureSet } from '../services/secureStorage';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {secureGet,} from '../services/secureStorage';
+// ─── Revolut-inspired Theme ─────────────────────────────────────────────────
+const C = {
+  // Surfaces
+  bg: '#0B0F17',
+  bgSurface: '#141A23',
+  bgElevated: '#1C2333',
+  bgInput: '#0F1420',
+  bgTint: '#1E2740',
+  bgOverlay: '#0D1219',
 
-// ─── Theme ─────────────────────────────────────────────────────────────────────
-// Improved: richer dark surfaces, warmer gold palette, better contrast ratios,
-// more distinct surface layers so depth reads clearly on OLED & LCD alike.
+  // Primary gold
+  gold: '#D4AF37',
+  goldBright: '#F0CE5A',
+  goldDim: '#1A1608',
+  goldBorder: '#2A2210',
+  goldText: '#F0CE5A',
+  goldMuted: 'rgba(212,175,55,0.12)',
+
+  // Structural borders
+  border: '#1E2535',
+  borderSoft: '#161D2A',
+  borderGold: '#2A2210',
+
+  // Typography
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textTertiary: '#4B5563',
+  textInverse: '#0B0F17',
+
+  // Semantic – green (success)
+  green: '#10B981',
+  greenDim: '#071A12',
+  greenBdr: '#0D3322',
+
+  // Semantic – red (danger)
+  red: '#EF4444',
+  redDim: '#1A0808',
+  redBdr: '#3A1212',
+
+  // Semantic – purple (secondary accent)
+  purple: '#8B5CF6',
+  purpleDim: '#110E2A',
+  purpleBdr: '#231A4A',
+
+  // Semantic – amber
+  amber: '#F59E0B',
+  amberDim: '#1A1205',
+
+  // Semantic – teal
+  teal: '#14B8A6',
+  tealDim: '#071A18',
+};
+
+// ─── Suggestion icons ───────────────────────────────────────────────────────
 const suggestionIcons: Record<string, string> = {
   'Top Merchants': 'store-outline',
-
   'Category Breakdown': 'chart-pie',
-
   'Savings Summary': 'piggy-bank-outline',
-
   'Income Breakdown': 'cash-plus',
-
   'Expenses Breakdown': 'cash-minus',
-
   'Top Category': 'trophy-outline',
-
   'Show Categories': 'view-grid-outline',
-
   'Reduce Spending': 'trending-down',
 };
 
-const C = {
-  // Surfaces — each step is clearly distinguishable
-  bg: '#07080A', // true-black tinted cool — OLED friendly
-  bgSurface: '#0D0F12', // card base
-  bgElevated: '#131619', // raised elements
-  bgInput: '#0F1114', // input well
-  bgTint: '#1A1D22', // hover / pressed tint
-
-  // Gold — warmer, more luminous hierarchy
-  gold: '#C9974A', // primary accent
-  goldBright: '#F0CB74', // highlights, active states
-  goldDim: '#1E1A0F', // gold-tinted surface (sessions)
-  goldBorder: '#2E2310', // gold-hued border
-  goldText: '#F5DFA0', // readable gold text
-
-  // Structural borders — refined step between surfaces
-  border: '#1E2126',
-  borderSoft: '#171A1F',
-  borderGold: '#2A200C',
-
-  // Typography — higher contrast at each tier
-  textPrimary: '#EEE9E2', // near-white warm
-  textSecondary: '#72706C', // mid-grey warm
-  textTertiary: '#3A3A38', // placeholder / timestamps
-  textInverse: '#060400', // text on gold buttons
-
-  // Semantic — green
-  green: '#2EBF68',
-  greenDim: '#091A10',
-  greenBdr: '#163324',
-
-  // Semantic — red
-  red: '#D44F50',
-  redDim: '#180C0C',
-  redBdr: '#381515',
-
-  // Semantic — amber
-  amber: '#E89530',
-  amberDim: '#1A1208',
-
-  // Semantic — purple
-  purple: '#7872D5',
-  purpleDim: '#100F36',
-
-  // Semantic — teal
-  teal: '#1E9B74',
-  tealDim: '#071A14',
-};
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
+// ─── Types ──────────────────────────────────────────────────────────────────
 type MessageRole = 'user' | 'ai';
 type InsightType =
   | 'spending'
@@ -141,14 +135,9 @@ interface AnomalyAlert {
 }
 interface MessageMeta {
   insightType?: InsightType;
-  merchants?: {
-    name: string;
-    category: string;
-    amount: string;
-    color: string;
-  }[];
+  merchants?: MerchantChip[];
   bars?: MiniBar[];
-  anomaly?: { ref: string; desc: string; amount: string };
+  anomaly?: AnomalyAlert;
   savingsTip?: string;
 }
 interface ChatSession {
@@ -161,36 +150,17 @@ interface ChatSession {
   updatedAt: number;
 }
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
-
+// ─── Constants ──────────────────────────────────────────────────────────────
 const SESSIONS_KEY = 'smartspend_sessions_v3';
 const ACTIVE_KEY = 'smartspend_active_v3';
 
 const QUICK_PROMPTS = [
-  {
-    icon: 'chart-pie',
-    label: 'Where did I spend most this month?',
-  },
-  {
-    icon: 'store-outline',
-    label: 'Show top merchants',
-  },
-  {
-    icon: 'view-grid-outline',
-    label: 'Spending by category',
-  },
-  {
-    icon: 'cash-multiple',
-    label: 'How much income did I receive?',
-  },
-  {
-    icon: 'piggy-bank-outline',
-    label: 'How much did I save?',
-  },
-  {
-    icon: 'alert-circle-outline',
-    label: 'Detect unusual spending',
-  },
+  { icon: 'chart-pie', label: 'Where did I spend most this month?' },
+  { icon: 'store-outline', label: 'Show top merchants' },
+  { icon: 'view-grid-outline', label: 'Spending by category' },
+  { icon: 'cash-multiple', label: 'How much income did I receive?' },
+  { icon: 'piggy-bank-outline', label: 'How much did I save?' },
+  { icon: 'alert-circle-outline', label: 'Detect unusual spending' },
 ];
 
 const LOADING_PHRASES = [
@@ -202,63 +172,26 @@ const LOADING_PHRASES = [
 ];
 
 const CAT = {
-  spending: {
-    icon: 'chart-pie',
-    color: C.amber,
-    label: 'Spending',
-  },
-  categories: {
-    icon: 'view-grid-outline',
-    color: C.teal,
-    label: 'Categories',
-  },
-  subscriptions: {
-    icon: 'repeat',
-    color: C.purple,
-    label: 'Subscriptions',
-  },
-  income: {
-    icon: 'cash-multiple',
-    color: C.green,
-    label: 'Income',
-  },
-  savings: {
-    icon: 'piggy-bank-outline',
-    color: C.green,
-    label: 'Savings',
-  },
-  anomaly: {
-    icon: 'alert-circle-outline',
-    color: C.red,
-    label: 'Anomaly',
-  },
-  merchant: {
-    icon: 'store-outline',
-    color: C.teal,
-    label: 'Merchant',
-  },
-  summary: {
-    icon: 'shimmer',
-    color: C.gold,
-    label: 'Summary',
-  },
+  spending: { icon: 'chart-pie', color: C.amber, label: 'Spending' },
+  categories: { icon: 'view-grid-outline', color: C.teal, label: 'Categories' },
+  subscriptions: { icon: 'repeat', color: C.purple, label: 'Subscriptions' },
+  income: { icon: 'cash-multiple', color: C.green, label: 'Income' },
+  savings: { icon: 'piggy-bank-outline', color: C.green, label: 'Savings' },
+  anomaly: { icon: 'alert-circle-outline', color: C.red, label: 'Anomaly' },
+  merchant: { icon: 'store-outline', color: C.teal, label: 'Merchant' },
+  summary: { icon: 'shimmer', color: C.gold, label: 'Summary' },
 };
 
-// ─── Utility: derive session title from first user message ─────────────────────
-// Mirrors behaviour in Claude / ChatGPT: first user question becomes the title.
-// Falls back to "New chat" if no user message exists yet.
+// ─── Utilities ───────────────────────────────────────────────────────────────
 const deriveSessionTitle = (messages: Message[]): string => {
   const firstUser = messages.find(m => m.role === 'user');
   if (!firstUser) return 'New chat';
   const text = firstUser.text.trim();
-  // Truncate to 42 chars with ellipsis, preserving word boundaries
   if (text.length <= 42) return text;
   const truncated = text.slice(0, 42);
   const lastSpace = truncated.lastIndexOf(' ');
   return (lastSpace > 28 ? truncated.slice(0, lastSpace) : truncated) + '…';
 };
-
-// ─── Tiny utilities ────────────────────────────────────────────────────────────
 
 const fmtTime = (ts: number) =>
   new Date(ts).toLocaleTimeString('en-IN', {
@@ -269,12 +202,11 @@ const fmtTime = (ts: number) =>
 const fmtDate = (ts: number) =>
   new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // Sub-components
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 
-// ── Pulse dot ──────────────────────────────────────────────────────────────────
-
+// ── Pulse dot ────────────────────────────────────────────────────────────────
 const PulseDot: React.FC = () => {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -315,8 +247,7 @@ const PulseDot: React.FC = () => {
   );
 };
 
-// ── Waveform loading indicator ─────────────────────────────────────────────────
-
+// ── Waveform loader ───────────────────────────────────────────────────────────
 const WaveformLoader: React.FC<{ phrase: string }> = ({ phrase }) => {
   const anims = useRef(
     Array.from({ length: 9 }, (_, i) => ({
@@ -362,60 +293,65 @@ const WaveformLoader: React.FC<{ phrase: string }> = ({ phrase }) => {
   );
 };
 
-// ── Income card ────────────────────────────────────────────────────────────────
+// ── Income card ───────────────────────────────────────────────────────────────
 const IncomeCard = ({ text }: { text: string }) => (
   <View
-    style={{
-      marginTop: 10,
-      backgroundColor: C.greenDim,
-      borderWidth: 1,
-      borderColor: C.greenBdr,
-      borderRadius: 12,
-      padding: 12,
-    }}
+    style={[
+      g.semanticCard,
+      { backgroundColor: C.greenDim, borderColor: C.greenBdr },
+    ]}
   >
-    <MaterialCommunityIcons name="cash-multiple" size={20} color={C.green} />
-    <Text style={{ color: C.green, marginTop: 6, fontWeight: '600' }}>
-      Income Summary
-    </Text>
-    <Text style={{ color: C.textPrimary, marginTop: 4 }}>{text}</Text>
+    <View style={g.semanticCardHeader}>
+      <View style={[g.semanticIconWrap, { backgroundColor: C.green + '20' }]}>
+        <MaterialCommunityIcons
+          name="cash-multiple"
+          size={16}
+          color={C.green}
+        />
+      </View>
+      <Text style={[g.semanticCardTitle, { color: C.green }]}>
+        Income Summary
+      </Text>
+    </View>
+    <Text style={g.semanticCardText}>{text}</Text>
   </View>
 );
 
+// ── Subscription card ─────────────────────────────────────────────────────────
 const SubscriptionCard: React.FC<{ merchants: MerchantChip[] }> = ({
   merchants,
 }) => (
-  <View style={g.subscriptionCard}>
-    <Text style={{ color: C.purple, fontWeight: '600', marginBottom: 8 }}>
-      Recurring Subscriptions
-    </Text>
+  <View
+    style={[
+      g.semanticCard,
+      { backgroundColor: C.purpleDim, borderColor: C.purpleBdr },
+    ]}
+  >
+    <View style={g.semanticCardHeader}>
+      <View style={[g.semanticIconWrap, { backgroundColor: C.purple + '20' }]}>
+        <MaterialCommunityIcons name="repeat" size={16} color={C.purple} />
+      </View>
+      <Text style={[g.semanticCardTitle, { color: C.purple }]}>
+        Recurring Subscriptions
+      </Text>
+    </View>
     {merchants.map(sub => (
-      <View
-        key={sub.name}
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          paddingVertical: 4,
-        }}
-      >
-        <Text style={{ color: C.textPrimary, fontSize: 12 }}>{sub.name}</Text>
-        <Text style={{ color: C.purple, fontSize: 12, fontWeight: '600' }}>
-          {sub.amount}
-        </Text>
+      <View key={sub.name} style={g.subRow}>
+        <Text style={g.subName}>{sub.name}</Text>
+        <Text style={[g.subAmount, { color: C.purple }]}>{sub.amount}</Text>
       </View>
     ))}
   </View>
 );
 
-// ── Merchant chip row ──────────────────────────────────────────────────────────
-
+// ── Merchant chip row ─────────────────────────────────────────────────────────
 const MerchantRow: React.FC<{ merchants: MerchantChip[] }> = ({
   merchants,
 }) => (
   <ScrollView
     horizontal
     showsHorizontalScrollIndicator={false}
-    style={{ marginTop: 11 }}
+    style={{ marginTop: 12 }}
     contentContainerStyle={{ gap: 8, flexDirection: 'row', paddingRight: 4 }}
   >
     {merchants.map((m, i) => (
@@ -423,7 +359,7 @@ const MerchantRow: React.FC<{ merchants: MerchantChip[] }> = ({
         key={i}
         style={[
           g.merchantChip,
-          { borderLeftColor: m.color, borderLeftWidth: 2 },
+          { borderLeftColor: m.color, borderLeftWidth: 2.5 },
         ]}
       >
         <View style={[g.merchantDot, { backgroundColor: m.color }]} />
@@ -432,7 +368,7 @@ const MerchantRow: React.FC<{ merchants: MerchantChip[] }> = ({
           <Text style={g.merchantMeta}>
             {m.category}
             {'  '}
-            <Text style={{ color: m.color, fontWeight: '600' }}>
+            <Text style={{ color: m.color, fontWeight: '700' }}>
               {m.amount}
             </Text>
           </Text>
@@ -442,34 +378,28 @@ const MerchantRow: React.FC<{ merchants: MerchantChip[] }> = ({
   </ScrollView>
 );
 
-//CUSTOM HORIZONTAL CHART
+// ── Category chart ────────────────────────────────────────────────────────────
 const CategoryChart: React.FC<{ bars: MiniBar[] }> = ({ bars }) => (
   <View style={g.categoryCard}>
     {bars.map(item => {
       const max = Math.max(...bars.map(b => b.amount));
-
       const width = (item.amount / max) * 100;
-
       return (
         <View key={item.label} style={g.categoryRow}>
           <View style={g.categoryHeader}>
             <Text style={g.categoryLabel}>{item.label}</Text>
-
-            <Text style={g.categoryAmount}>₹{item.amount}</Text>
+            <Text style={[g.categoryAmount, { color: C.goldBright }]}>
+              ₹{item.amount}
+            </Text>
           </View>
-
           <View style={g.progressTrack}>
-            <View
+            <Animated.View
               style={[
                 g.progressFill,
-                {
-                  width: `${width}%`,
-                  backgroundColor: item.color,
-                },
+                { width: `${width}%` as any, backgroundColor: item.color },
               ]}
             />
           </View>
-
           <Text style={g.categoryPercent}>{item.percent?.toFixed(1)}%</Text>
         </View>
       );
@@ -477,24 +407,20 @@ const CategoryChart: React.FC<{ bars: MiniBar[] }> = ({ bars }) => (
   </View>
 );
 
-// ── Anomaly alert card ─────────────────────────────────────────────────────────
-
+// ── Anomaly card ──────────────────────────────────────────────────────────────
 const AnomalyCard: React.FC<{ anomaly: AnomalyAlert }> = ({ anomaly }) => (
   <View style={g.anomalyCard}>
-    <View style={{ flexDirection: 'row', gap: 9, alignItems: 'flex-start' }}>
-      <MaterialCommunityIcons
-        name="alert-circle"
-        size={15}
-        color={C.red}
-        style={{ marginTop: 1 }}
-      />
-      <View style={{ flex: 1, gap: 3 }}>
+    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+      <View style={g.anomalyIconWrap}>
+        <MaterialCommunityIcons name="alert-circle" size={14} color={C.red} />
+      </View>
+      <View style={{ flex: 1, gap: 4 }}>
         <Text style={g.anomalyRef}>{anomaly.ref}</Text>
         <Text style={g.anomalyDesc}>{anomaly.desc}</Text>
         <View style={g.anomalyFooter}>
           <Text style={g.anomalyAmt}>{anomaly.amount}</Text>
           <TouchableOpacity style={g.reviewBtn} activeOpacity={0.8}>
-            <Text style={g.reviewBtnText}>Review now</Text>
+            <Text style={g.reviewBtnText}>Review</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -502,23 +428,23 @@ const AnomalyCard: React.FC<{ anomaly: AnomalyAlert }> = ({ anomaly }) => (
   </View>
 );
 
-// ── Savings tip pill ───────────────────────────────────────────────────────────
-
+// ── Savings pill ──────────────────────────────────────────────────────────────
 const SavingsPill: React.FC<{ tip: string }> = ({ tip }) => (
   <View style={g.savingsPill}>
-    <MaterialCommunityIcons name="trending-up" size={13} color={C.green} />
+    <View style={g.savingsPillIcon}>
+      <MaterialCommunityIcons name="trending-up" size={12} color={C.green} />
+    </View>
     <Text style={g.savingsPillText}>{tip}</Text>
   </View>
 );
 
-// ── Message bubble ─────────────────────────────────────────────────────────────
-
+// ── Message bubble ────────────────────────────────────────────────────────────
 const MessageBubble: React.FC<{
   message: Message;
   onSuggestionPress?: (text: string) => void;
 }> = ({ message, onSuggestionPress }) => {
   const fade = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(14)).current;
+  const slide = useRef(new Animated.Value(16)).current;
   const isUser = message.role === 'user';
   const { width } = useWindowDimensions();
 
@@ -526,12 +452,12 @@ const MessageBubble: React.FC<{
     Animated.parallel([
       Animated.timing(fade, {
         toValue: 1,
-        duration: 340,
+        duration: 320,
         useNativeDriver: true,
       }),
       Animated.spring(slide, {
         toValue: 0,
-        tension: 90,
+        tension: 85,
         friction: 13,
         useNativeDriver: true,
       }),
@@ -568,20 +494,20 @@ const MessageBubble: React.FC<{
         <MaterialCommunityIcons name="shimmer" size={12} color={C.gold} />
       </View>
 
-      <View style={{ flex: 1, gap: 5 }}>
+      <View style={{ flex: 1, gap: 6 }}>
         {cat && (
           <View
             style={[
               g.insightBadge,
               {
-                backgroundColor: cat.color + '1A',
-                borderColor: cat.color + '40',
+                backgroundColor: cat.color + '18',
+                borderColor: cat.color + '35',
               },
             ]}
           >
             <MaterialCommunityIcons
               name={cat.icon}
-              size={11}
+              size={10}
               color={cat.color}
             />
             <Text style={[g.insightBadgeText, { color: cat.color }]}>
@@ -592,6 +518,7 @@ const MessageBubble: React.FC<{
 
         <View style={g.aiCard}>
           <Text style={g.aiText}>{message.text}</Text>
+
           {message.suggestions?.length ? (
             <View style={g.suggestionContainer}>
               {message.suggestions.map(suggestion => (
@@ -599,14 +526,14 @@ const MessageBubble: React.FC<{
                   key={suggestion}
                   style={g.suggestionChip}
                   onPress={() => onSuggestionPress?.(suggestion)}
+                  activeOpacity={0.75}
                 >
                   <View style={g.suggestionContent}>
                     <MaterialCommunityIcons
                       name={suggestionIcons[suggestion] || 'lightbulb-outline'}
-                      size={16}
-                      color="#D4AF37"
+                      size={13}
+                      color={C.gold}
                     />
-
                     <Text style={g.suggestionText}>{suggestion}</Text>
                   </View>
                 </TouchableOpacity>
@@ -628,8 +555,9 @@ const MessageBubble: React.FC<{
             <SubscriptionCard merchants={merchants!} />
           )}
           {insightType === 'income' && <IncomeCard text={message.text} />}
+
           <Text style={g.aiTime}>
-            {fmtTime(message.timestamp)} · SmartSpend AI
+            {fmtTime(message.timestamp)} · centfluence
           </Text>
         </View>
       </View>
@@ -637,8 +565,7 @@ const MessageBubble: React.FC<{
   );
 };
 
-// ── Session history item ───────────────────────────────────────────────────────
-
+// ── Session item ──────────────────────────────────────────────────────────────
 const SessionItem: React.FC<{
   item: Omit<ChatSession, 'messages'>;
   isActive: boolean;
@@ -652,12 +579,11 @@ const SessionItem: React.FC<{
       onPress={onSelect}
       activeOpacity={0.72}
     >
-      <View style={[g.sessionIcon, { backgroundColor: cat.color + '18' }]}>
-        <MaterialCommunityIcons name={cat.icon} size={15} color={cat.color} />
+      <View style={[g.sessionIcon, { backgroundColor: cat.color + '15' }]}>
+        <MaterialCommunityIcons name={cat.icon} size={14} color={cat.color} />
       </View>
 
       <View style={{ flex: 1, gap: 3 }}>
-        {/* Title = first user question (set by deriveSessionTitle) */}
         <Text
           style={[g.sessionTitle, isActive && { color: C.goldBright }]}
           numberOfLines={1}
@@ -668,7 +594,7 @@ const SessionItem: React.FC<{
           {item.preview}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-          <View style={[g.catPill, { backgroundColor: cat.color + '18' }]}>
+          <View style={[g.catPill, { backgroundColor: cat.color + '15' }]}>
             <Text style={[g.catPillText, { color: cat.color }]}>
               {cat.label}
             </Text>
@@ -679,7 +605,7 @@ const SessionItem: React.FC<{
 
       <TouchableOpacity
         onPress={onDelete}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
         <MaterialCommunityIcons name="close" size={13} color={C.textTertiary} />
       </TouchableOpacity>
@@ -687,10 +613,9 @@ const SessionItem: React.FC<{
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // ChatScreen — main component
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// ═══════════════════════════════════════════════════════════════════════════
 const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { width: SCREEN_W } = useWindowDimensions();
@@ -704,64 +629,89 @@ const ChatScreen: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [headerH, setHeaderH] = useState(56);
+  // Track if current session is "dirty" (has at least one user message sent)
+  const [isSessionPersisted, setIsSessionPersisted] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const historySlide = useRef(new Animated.Value(-SCREEN_W * 0.84)).current;
   const historyAlpha = useRef(new Animated.Value(0)).current;
   const phraseIdx = useRef(0);
+  // Ref to hold ephemeral session id (not yet saved)
+  const pendingSessionRef = useRef<ChatSession | null>(null);
 
-  // ─── Persistence ─────────────────────────────────────────────────────────
-
+  // ─── Persistence ────────────────────────────────────────────────────────
   const saveSessions = useCallback(async (data: ChatSession[]) => {
     try {
-      await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(data));
+      await secureSet(
+  SESSIONS_KEY,
+  data,
+);
     } catch {}
   }, []);
 
-  const createNewSession = useCallback(
+  useEffect(() => {
+
+  const clearChatSessions = async () => {
+
+    await AsyncStorage.removeItem(
+      SESSIONS_KEY,
+    );
+
+    console.log(
+      'CHAT SESSIONS CLEARED',
+    );
+  };
+
+  clearChatSessions();
+
+}, []);
+
+  // Creates an ephemeral session (not saved until first user message)
+  const createEphemeralSession = useCallback((): ChatSession => {
+    const welcome: Message = {
+      id: uuid.v4().toString(),
+      role: 'ai',
+      text: 'Ask me about your spending, savings, categories, subscriptions or anomalies.',
+      timestamp: Date.now(),
+    };
+    const session: ChatSession = {
+      id: uuid.v4().toString(),
+      title: 'New chat',
+      preview: welcome.text.slice(0, 64) + '…',
+      category: 'summary',
+      messages: [welcome],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    return session;
+  }, []);
+
+  const startNewChat = useCallback(
     (existing: ChatSession[]) => {
-      const welcome: Message = {
-        id: `m${Date.now()}`,
-        role: 'ai',
-        text: 'Ask me about your spending, savings, categories, subscriptions or anomalies.',
-        timestamp: Date.now(),
-      };
-      const session: ChatSession = {
-        id: `s${Date.now()}`,
-        // Title starts as 'New chat' — updated to first user question on send
-        title: 'New chat',
-        preview: welcome.text.slice(0, 64) + '…',
-        category: 'summary',
-        messages: [welcome],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      const next = [session, ...existing];
-      setSessions(next);
+      const session = createEphemeralSession();
+      pendingSessionRef.current = session;
       setActiveSessionId(session.id);
-      setMessages([welcome]);
-      saveSessions(next);
-      AsyncStorage.setItem(ACTIVE_KEY, session.id).catch(() => {});
+      setMessages(session.messages);
+      setIsSessionPersisted(false);
+      // NOTE: we do NOT add to sessions state or persist until user sends a message
     },
-    [saveSessions],
+    [createEphemeralSession],
   );
 
-useEffect(() => {
-  if (messages.length > 0) {
-    flatListRef.current?.scrollToEnd({
-      animated: true,
-    });
-  }
-}, [messages.length]);
-      
+  useEffect(() => {
+    if (messages.length > 0) {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [messages.length]);
+
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(SESSIONS_KEY);
+        const parsed = await secureGet(SESSIONS_KEY,);
         const activeId = await AsyncStorage.getItem(ACTIVE_KEY);
-        if (raw) {
-          const loaded: ChatSession[] = JSON.parse(raw);
+        if (parsed) {
+          const loaded: ChatSession[] = JSON.parse(parsed);
           setSessions(loaded);
           const target = activeId
             ? loaded.find(s => s.id === activeId)
@@ -769,19 +719,21 @@ useEffect(() => {
           if (target) {
             setActiveSessionId(target.id);
             setMessages(target.messages);
-          } else createNewSession(loaded);
+            setIsSessionPersisted(true);
+          } else {
+            startNewChat(loaded);
+          }
         } else {
-          createNewSession([]);
+          startNewChat([]);
         }
       } catch {
-        createNewSession([]);
+        startNewChat([]);
       } finally {
         setIsLoading(false);
       }
     })();
   }, []);
 
-  // ── persistUpdate: uses deriveSessionTitle so title always = first user Q ──
   const persistUpdate = useCallback(
     (msgs: Message[], all: ChatSession[], sid: string) => {
       const next = all.map(s => {
@@ -802,8 +754,7 @@ useEffect(() => {
     [saveSessions],
   );
 
-  // ─── History drawer ───────────────────────────────────────────────────────
-
+  // ─── History drawer ──────────────────────────────────────────────────────
   const openHistory = useCallback(() => {
     setShowHistory(true);
     Animated.parallel([
@@ -840,6 +791,8 @@ useEffect(() => {
     (session: ChatSession) => {
       setActiveSessionId(session.id);
       setMessages(session.messages);
+      setIsSessionPersisted(true);
+      pendingSessionRef.current = null;
       AsyncStorage.setItem(ACTIVE_KEY, session.id).catch(() => {});
       closeHistory();
     },
@@ -855,35 +808,97 @@ useEffect(() => {
           if (next.length > 0) {
             setActiveSessionId(next[0].id);
             setMessages(next[0].messages);
-          } else createNewSession([]);
+            setIsSessionPersisted(true);
+          } else {
+            startNewChat([]);
+          }
         }
         return next;
       });
     },
-    [activeSessionId, saveSessions, createNewSession],
+    [activeSessionId, saveSessions, startNewChat],
   );
 
-  // ─── Messaging ────────────────────────────────────────────────────────────
+  // ─── Messaging ───────────────────────────────────────────────────────────
   const cyclePhrase = useCallback(() => {
     phraseIdx.current = (phraseIdx.current + 1) % LOADING_PHRASES.length;
     setLoadingPhrase(LOADING_PHRASES[phraseIdx.current]);
   }, []);
 
+  const looksNonFinancial = (text: string) => {
+    const query = text.toLowerCase();
+
+    const obviousNonFinance = [
+      'joke',
+      'movie',
+      'actor',
+      'cricket',
+      'football',
+      'ipl',
+      'politics',
+      'election',
+      'religion',
+      'doctor',
+      'medicine',
+      'disease',
+      'programming',
+      'react native',
+      'python',
+      'java',
+      'javascript',
+      'hack',
+      'malware',
+      'virus',
+    ];
+
+    return obviousNonFinance.some(keyword => query.includes(keyword));
+  };
+
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || !activeSessionId || isTyping) return;
+      if (looksNonFinancial(text)) {
+        Alert.alert(
+          'Financial Assistant',
+          'centfluence AI is designed for spending, income, savings and transaction analysis.',
+        );
+      }
       setInputText('');
 
       const userMsg: Message = {
-        id: `m${Date.now()}`,
+        id: uuid.v4().toString(),
         role: 'user',
         text: text.trim(),
         timestamp: Date.now(),
       };
+
+      let currentSessions = sessions;
+      let currentSessionId = activeSessionId;
+
+      // ── Lazy session creation: persist the ephemeral session on first message ──
+      if (!isSessionPersisted && pendingSessionRef.current) {
+        const s = pendingSessionRef.current;
+        const sessionToSave: ChatSession = {
+          ...s,
+          title:
+            text.trim().length <= 42
+              ? text.trim()
+              : text.trim().slice(0, 42) + '…',
+        };
+        const newSessions = [sessionToSave, ...sessions];
+        setSessions(newSessions);
+        saveSessions(newSessions);
+        AsyncStorage.setItem(ACTIVE_KEY, sessionToSave.id).catch(() => {});
+        currentSessions = newSessions;
+        currentSessionId = sessionToSave.id;
+        setIsSessionPersisted(true);
+        pendingSessionRef.current = null;
+      }
+
+      if (!currentSessionId) return;
+
       const withUser = [...messages, userMsg];
       setMessages(withUser);
-      // persistUpdate now derives title from first user question automatically
-      persistUpdate(withUser, sessions, activeSessionId);
+      persistUpdate(withUser, currentSessions, currentSessionId);
       setIsTyping(true);
       setLoadingPhrase(LOADING_PHRASES[0]);
       phraseIdx.current = 0;
@@ -893,7 +908,7 @@ useEffect(() => {
       try {
         const aiResponse = await fetchAIInsight(text);
         let suggestions: string[] = [];
-        console.log('INSIGHT TYPE:', aiResponse.insightType);
+
         switch (aiResponse.insightType) {
           case 'merchant':
             suggestions = [
@@ -902,7 +917,6 @@ useEffect(() => {
               'How can I reduce spending?',
             ];
             break;
-
           case 'spending':
             suggestions = [
               'Top Merchants',
@@ -910,7 +924,6 @@ useEffect(() => {
               'Show Categories',
             ];
             break;
-
           case 'savings':
             suggestions = [
               'Income Breakdown',
@@ -918,7 +931,6 @@ useEffect(() => {
               'Top Category',
             ];
             break;
-
           case 'income':
             suggestions = [
               'Top Income Sources',
@@ -926,7 +938,6 @@ useEffect(() => {
               'Monthly Overview',
             ];
             break;
-
           default:
             suggestions = [
               'Top Merchants',
@@ -934,12 +945,12 @@ useEffect(() => {
               'Savings Summary',
             ];
         }
+
         const aiMsg: Message = {
-          id: `m${Date.now() + 1}`,
+          id: uuid.v4().toString(),
           role: 'ai',
           text: aiResponse.text,
           timestamp: Date.now(),
-
           suggestions,
           meta: {
             insightType: aiResponse.insightType,
@@ -955,10 +966,9 @@ useEffect(() => {
 
         setSessions(prev => {
           const next = prev.map(s =>
-            s.id === activeSessionId
+            s.id === currentSessionId
               ? {
                   ...s,
-                  // Keep first-user-question as title even after AI replies
                   title: deriveSessionTitle(final),
                   preview: aiResponse.text.slice(0, 64) + '…',
                   category: aiResponse.insightType ?? s.category,
@@ -972,7 +982,7 @@ useEffect(() => {
         });
       } catch (err) {
         const errorMsg: Message = {
-          id: `m${Date.now()}`,
+          id: uuid.v4().toString(),
           role: 'ai',
           text: 'Unable to fetch insights right now.',
           timestamp: Date.now(),
@@ -989,14 +999,14 @@ useEffect(() => {
       activeSessionId,
       sessions,
       isTyping,
+      isSessionPersisted,
       persistUpdate,
       saveSessions,
       cyclePhrase,
     ],
   );
 
-  // ─── Derived state ────────────────────────────────────────────────────────
-
+  // ─── Derived state ───────────────────────────────────────────────────────
   const allHistory = useMemo(() => {
     return sessions
       .map(({ id, title, preview, category, createdAt, updatedAt }) => ({
@@ -1013,27 +1023,31 @@ useEffect(() => {
   const activeSession = sessions.find(s => s.id === activeSessionId);
   const showWelcome = messages.length <= 1;
 
-  // ─── Loading screen ───────────────────────────────────────────────────────
-
   if (isLoading) {
     return (
       <SafeAreaView style={g.safe}>
         <StatusBar barStyle="light-content" backgroundColor={C.bg} />
-        <View style={g.loadingCenter}>
-          <ActivityIndicator size="large" color={C.gold} />
-          <Text style={g.loadingText}>Initializing AI engine…</Text>
+        <View style={g.loadingcenter}>
+          <View style={g.loadingLogo}>
+            <MaterialCommunityIcons name="shimmer" size={28} color={C.gold} />
+          </View>
+          <Text style={g.loadingTitle}>centfluence</Text>
+          <Text style={g.loadingText}>Initializing engine…</Text>
+          <ActivityIndicator
+            size="small"
+            color={C.gold}
+            style={{ marginTop: 20 }}
+          />
         </View>
       </SafeAreaView>
     );
   }
 
-  // ─── Input bar bottom padding ─────────────────────────────────────────────
-  // Ensures comfortable gap above home indicator on all devices (iPhone SE →
-  // Dynamic Island) without double-applying insets when keyboard is visible.
   const inputPaddingBottom = Math.max(insets.bottom, 12);
-
-  // ─── Main render ──────────────────────────────────────────────────────────
-
+  console.log(
+  'MESSAGE IDS',
+  messages.map(m => m.id),
+);
   return (
     <SafeAreaView style={g.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
@@ -1066,26 +1080,26 @@ useEffect(() => {
       >
         <View style={g.drawerHeader}>
           <View>
-            <Text style={g.drawerTitle}>Session history</Text>
-            <Text style={g.drawerSub}>SMS-analyzed conversations</Text>
+            <Text style={g.drawerTitle}>Conversations</Text>
+            <Text style={g.drawerSub}>Your financial sessions</Text>
           </View>
           <TouchableOpacity
             style={g.newChatBtn}
             activeOpacity={0.82}
             onPress={() => {
               closeHistory();
-              setTimeout(() => createNewSession(sessions), 310);
+              setTimeout(() => startNewChat(sessions), 310);
             }}
           >
             <MaterialCommunityIcons
               name="plus"
-              size={13}
+              size={12}
               color={C.textInverse}
             />
-            <Text style={g.newChatBtnText}>New</Text>
+            <Text style={g.newChatBtnText}>New chat</Text>
           </TouchableOpacity>
         </View>
-
+            
         <FlatList
           data={allHistory}
           keyExtractor={item => item.id}
@@ -1103,7 +1117,17 @@ useEffect(() => {
             );
           }}
           ListEmptyComponent={
-            <Text style={g.emptyHistory}>No sessions yet</Text>
+            <View style={g.emptyHistoryWrap}>
+              <MaterialCommunityIcons
+                name="chat-outline"
+                size={32}
+                color={C.textTertiary}
+              />
+              <Text style={g.emptyHistory}>No conversations yet</Text>
+              <Text style={g.emptyHistorySub}>
+                Start chatting to see your history
+              </Text>
+            </View>
           }
         />
       </Animated.View>
@@ -1128,13 +1152,13 @@ useEffect(() => {
 
           <View style={g.headerMid}>
             <View style={g.aiAvatarLg}>
-              <MaterialCommunityIcons name="shimmer" size={17} color={C.gold} />
+              <MaterialCommunityIcons name="shimmer" size={16} color={C.gold} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={g.headerName} numberOfLines={1}>
                 {activeSession && activeSession.title !== 'New chat'
                   ? activeSession.title
-                  : 'SmartSpend AI'}
+                  : 'centfluence'}
               </Text>
               <View style={g.statusRow}>
                 <PulseDot />
@@ -1147,14 +1171,14 @@ useEffect(() => {
             <View style={g.encBadge}>
               <MaterialCommunityIcons
                 name="lock-outline"
-                size={10}
+                size={9}
                 color={C.textTertiary}
               />
               <Text style={g.encText}>E2E</Text>
             </View>
             <TouchableOpacity
               style={[g.iconBtn, { borderColor: C.goldBorder }]}
-              onPress={() => createNewSession(sessions)}
+              onPress={() => startNewChat(sessions)}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons
@@ -1165,19 +1189,14 @@ useEffect(() => {
             </TouchableOpacity>
           </View>
         </View>
-
-        <Text style={g.headerSub}>
-          AI-powered financial insights from your SMS transaction history
-        </Text>
       </View>
 
-      {/* ── Keyboard-aware content area ── */}
+      {/* ── Content area ── */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={headerH}
       >
-        {/* ── Messages list ── */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -1194,14 +1213,40 @@ useEffect(() => {
                 <View style={g.welcomeAvatarXL}>
                   <MaterialCommunityIcons
                     name="shimmer"
-                    size={32}
+                    size={30}
                     color={C.gold}
                   />
                 </View>
-                <Text style={g.welcomeTitle}>SmartSpend AI</Text>
+                <Text style={g.welcomeTitle}>centfluence</Text>
                 <Text style={g.welcomeSub}>
-                  Personal financial intelligence copilot
+                  Personal financial intelligence
                 </Text>
+                <View style={g.welcomePillRow}>
+                  <View style={g.welcomePill}>
+                    <MaterialCommunityIcons
+                      name="lock-outline"
+                      size={10}
+                      color={C.green}
+                    />
+                    <Text style={g.welcomePillText}>Private</Text>
+                  </View>
+                  <View style={g.welcomePill}>
+                    <MaterialCommunityIcons
+                      name="message-text-outline"
+                      size={10}
+                      color={C.purple}
+                    />
+                    <Text style={g.welcomePillText}>SMS-powered</Text>
+                  </View>
+                  <View style={g.welcomePill}>
+                    <MaterialCommunityIcons
+                      name="flash-outline"
+                      size={10}
+                      color={C.gold}
+                    />
+                    <Text style={g.welcomePillText}>Real-time</Text>
+                  </View>
+                </View>
               </View>
             ) : null
           }
@@ -1223,10 +1268,10 @@ useEffect(() => {
           }
         />
 
-        {/* ── Quick prompt chips (welcome state only) ── */}
+        {/* ── Quick prompts ── */}
         {showWelcome && (
           <View style={g.promptsWrap}>
-            <Text style={g.promptsLabel}>Suggested questions</Text>
+            <Text style={g.promptsLabel}>SUGGESTED</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -1244,11 +1289,18 @@ useEffect(() => {
                   onPress={() => sendMessage(q.label)}
                   activeOpacity={0.76}
                 >
-                  <MaterialCommunityIcons
-                    name={q.icon}
-                    size={13}
-                    color={C.gold}
-                  />
+                  <View
+                    style={[
+                      g.promptChipIcon,
+                      { backgroundColor: C.gold + '20' },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={q.icon}
+                      size={12}
+                      color={C.gold}
+                    />
+                  </View>
                   <Text style={g.promptChipText}>{q.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -1256,13 +1308,9 @@ useEffect(() => {
           </View>
         )}
 
-        {/* ── Input bar ──
-            paddingBottom = Math.max(insets.bottom, 12) so there is always a
-            comfortable gap above the home indicator on all devices.
-            iOS removes the bottom inset automatically when keyboard is visible. */}
+        {/* ── Input bar ── */}
         <View style={[g.inputBar, { paddingBottom: inputPaddingBottom }]}>
           <View style={g.inputSep} />
-
           <View style={g.inputRow}>
             <View style={g.inputWrap}>
               <TextInput
@@ -1270,7 +1318,7 @@ useEffect(() => {
                 style={g.input}
                 value={inputText}
                 onChangeText={setInputText}
-                placeholder="Ask about spending, savings, subscriptions…"
+                placeholder="Ask about spending, savings…"
                 placeholderTextColor={C.textTertiary}
                 multiline
                 maxLength={500}
@@ -1304,39 +1352,56 @@ useEffect(() => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // Styles
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// ═══════════════════════════════════════════════════════════════════════════
 const g = StyleSheet.create({
-  // ── Screen ────────────────────────────────────────────────────────────────
+  // Screen
   safe: { flex: 1, backgroundColor: C.bg },
-  loadingCenter: {
+
+  loadingcenter: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 14,
+    gap: 10,
   },
-  loadingText: { fontSize: 13, color: C.textSecondary, letterSpacing: 0.3 },
+  loadingLogo: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: C.bgSurface,
+    borderWidth: 1.5,
+    borderColor: C.goldBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: C.textPrimary,
+    letterSpacing: 0.3,
+  },
+  loadingText: { fontSize: 12, color: C.textSecondary, letterSpacing: 0.3 },
 
-  // ── Drawer overlay ────────────────────────────────────────────────────────
+  // Drawer overlay
   drawerOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.76)',
+    backgroundColor: 'rgba(0,0,0,0.78)',
     zIndex: 15,
   },
 
-  // ── History drawer ────────────────────────────────────────────────────────
+  // History drawer
   drawer: {
     position: 'absolute',
     top: 0,
     left: 0,
     bottom: 0,
-    backgroundColor: '#09090C',
+    backgroundColor: '#0D1219',
     borderRightWidth: 0.5,
     borderRightColor: C.border,
     zIndex: 25,
@@ -1352,10 +1417,10 @@ const g = StyleSheet.create({
     marginBottom: 4,
   },
   drawerTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: C.textPrimary,
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   drawerSub: {
     fontSize: 10,
@@ -1366,30 +1431,30 @@ const g = StyleSheet.create({
   newChatBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: C.gold,
   },
   newChatBtnText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: C.textInverse,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
-  // ── Session list ──────────────────────────────────────────────────────────
+  // Session items
   sessionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
     paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingVertical: 13,
     borderBottomWidth: 0.5,
     borderBottomColor: C.borderSoft,
   },
-  sessionItemActive: { backgroundColor: C.goldDim },
+  sessionItemActive: { backgroundColor: '#1A1608' },
   sessionIcon: {
     width: 34,
     height: 34,
@@ -1397,20 +1462,16 @@ const g = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Slightly larger title font for readability (was 12)
   sessionTitle: { fontSize: 13, fontWeight: '500', color: C.textPrimary },
   sessionPreview: { fontSize: 10, color: C.textSecondary, lineHeight: 14 },
   sessionDate: { fontSize: 9, color: C.textTertiary },
   catPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
-  catPillText: { fontSize: 9, fontWeight: '500', letterSpacing: 0.3 },
-  emptyHistory: {
-    fontSize: 12,
-    color: C.textTertiary,
-    textAlign: 'center',
-    paddingTop: 32,
-  },
+  catPillText: { fontSize: 9, fontWeight: '600', letterSpacing: 0.3 },
+  emptyHistoryWrap: { alignItems: 'center', paddingTop: 48, gap: 8 },
+  emptyHistory: { fontSize: 13, color: C.textSecondary, fontWeight: '500' },
+  emptyHistorySub: { fontSize: 11, color: C.textTertiary },
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // Header
   header: {
     backgroundColor: C.bg,
     borderBottomWidth: 0.5,
@@ -1430,11 +1491,9 @@ const g = StyleSheet.create({
     gap: 9,
     flex: 1,
     paddingHorizontal: 8,
-    // Prevent overflow on narrow screens (iPhone SE 320pt)
     minWidth: 0,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-
   aiAvatarLg: {
     width: 36,
     height: 36,
@@ -1448,9 +1507,9 @@ const g = StyleSheet.create({
   },
   headerName: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: C.goldText,
-    letterSpacing: 0.2,
+    letterSpacing: 0.15,
     flexShrink: 1,
   },
   statusRow: {
@@ -1459,9 +1518,13 @@ const g = StyleSheet.create({
     gap: 5,
     marginTop: 2,
   },
-  pulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.green },
+  pulseDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: C.green,
+  },
   statusText: { fontSize: 9, color: C.green, letterSpacing: 0.5 },
-
   iconBtn: {
     width: 34,
     height: 34,
@@ -1485,227 +1548,316 @@ const g = StyleSheet.create({
     paddingVertical: 4,
   },
   encText: { fontSize: 9, color: C.textTertiary, letterSpacing: 0.5 },
-  headerSub: {
-    fontSize: 10,
-    color: C.textTertiary,
-    marginTop: 5,
-    lineHeight: 14,
-    letterSpacing: 0.15,
-  },
 
-  // ── Messages list ─────────────────────────────────────────────────────────
+  // Messages
   msgList: {
     paddingHorizontal: 14,
     paddingTop: 16,
     paddingBottom: 24,
-    gap: 14,
+    gap: 16,
   },
 
-  // ── Welcome block ─────────────────────────────────────────────────────────
-  welcomeBlock: { alignItems: 'center', paddingVertical: 30, gap: 10 },
+  // Welcome
+  welcomeBlock: { alignItems: 'center', paddingVertical: 36, gap: 10 },
   welcomeAvatarXL: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: C.bgSurface,
     borderWidth: 1.5,
     borderColor: C.goldBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   welcomeTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '300',
     color: C.textPrimary,
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
-  welcomeSub: { fontSize: 11, color: C.textSecondary, letterSpacing: 0.25 },
+  welcomeSub: { fontSize: 12, color: C.textSecondary, letterSpacing: 0.2 },
+  welcomePillRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  welcomePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: C.bgSurface,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  welcomePillText: { fontSize: 10, color: C.textSecondary },
 
-  // ── Quick prompts ─────────────────────────────────────────────────────────
-  promptsWrap: { paddingHorizontal: 14, paddingBottom: 12, gap: 7 },
-  promptsLabel: { fontSize: 9, color: C.textTertiary, letterSpacing: 0.8 },
+  // Quick prompts
+  promptsWrap: { paddingHorizontal: 14, paddingBottom: 12, gap: 8 },
+  promptsLabel: {
+    fontSize: 9,
+    color: C.textTertiary,
+    letterSpacing: 1.2,
+    fontWeight: '600',
+  },
   promptChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 20,
+    borderRadius: 22,
     backgroundColor: C.bgSurface,
     borderWidth: 0.5,
-    borderColor: C.goldBorder,
+    borderColor: C.border,
   },
-  promptChipText: { fontSize: 11, color: C.textSecondary },
+  promptChipIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptChipText: { fontSize: 11, color: C.textSecondary, fontWeight: '400' },
 
-  // ── User message ──────────────────────────────────────────────────────────
+  // User message
   userRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   userBubble: {
-    // Richer gold gradient feel via a deeper base
     backgroundColor: C.gold,
-    borderRadius: 18,
-    borderBottomRightRadius: 4,
+    borderRadius: 20,
+    borderBottomRightRadius: 5,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
-  userText: { fontSize: 13, color: C.textInverse, lineHeight: 19 },
+  userText: {
+    fontSize: 13,
+    color: C.textInverse,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
   userTime: {
     fontSize: 9,
-    color: 'rgba(8,6,0,0.40)',
+    color: 'rgba(11,15,23,0.45)',
     textAlign: 'right',
     marginTop: 4,
   },
 
-  // ── AI message ────────────────────────────────────────────────────────────
-  aiRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  // AI message
+  aiRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   aiAvatarSm: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: C.bgElevated,
     borderWidth: 1,
     borderColor: C.goldBorder,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    marginTop: 25,
+    marginTop: 24,
   },
   insightBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 0.5,
   },
-  insightBadgeText: { fontSize: 9, fontWeight: '600', letterSpacing: 0.4 },
+  insightBadgeText: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
   aiCard: {
     backgroundColor: C.bgSurface,
     borderWidth: 0.5,
     borderColor: C.border,
-    borderRadius: 16,
-    borderBottomLeftRadius: 4,
-    padding: 13,
+    borderRadius: 18,
+    borderBottomLeftRadius: 5,
+    padding: 14,
     flex: 1,
   },
   aiText: { fontSize: 13, color: C.textPrimary, lineHeight: 20 },
-  aiTime: { fontSize: 9, color: C.textTertiary, marginTop: 9 },
+  aiTime: { fontSize: 9, color: C.textTertiary, marginTop: 10 },
 
-  // ── Merchant chips ────────────────────────────────────────────────────────
+  // Merchant chips
   merchantChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 9,
     backgroundColor: C.bgElevated,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 0.5,
     borderColor: C.border,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
   },
   merchantDot: { width: 7, height: 7, borderRadius: 3.5 },
-  merchantName: { fontSize: 11, fontWeight: '500', color: C.textPrimary },
+  merchantName: { fontSize: 11, fontWeight: '600', color: C.textPrimary },
   merchantMeta: { fontSize: 10, color: C.textSecondary, marginTop: 1 },
 
-  // ── Mini bars ─────────────────────────────────────────────────────────────
-  barRow: {
+  // Category chart
+  categoryCard: {
+    backgroundColor: C.bgElevated,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    gap: 14,
+  },
+  categoryRow: { gap: 0 },
+  categoryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  barLabel: { fontSize: 10, color: C.textSecondary },
-  barPct: { fontSize: 10, fontWeight: '500' },
-  barTrack: {
-    backgroundColor: C.bgTint,
-    borderRadius: 3,
-    height: 4,
+  categoryLabel: { color: C.textPrimary, fontSize: 13, fontWeight: '500' },
+  categoryAmount: { fontSize: 13, fontWeight: '700' },
+  progressTrack: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 999,
     overflow: 'hidden',
   },
-  barFill: { height: 4, borderRadius: 3 },
+  progressFill: { height: '100%', borderRadius: 999 },
+  categoryPercent: {
+    color: C.textTertiary,
+    fontSize: 11,
+    marginTop: 5,
+    textAlign: 'right',
+  },
 
-  // ── Anomaly card ──────────────────────────────────────────────────────────
+  // Anomaly card
   anomalyCard: {
     backgroundColor: C.redDim,
     borderWidth: 0.5,
     borderColor: C.redBdr,
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 11,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+  },
+  anomalyIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: C.red + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
   },
   anomalyRef: {
-    fontSize: 10,
+    fontSize: 11,
     color: C.red,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 3,
   },
-  anomalyDesc: { fontSize: 11, color: '#BB8080', lineHeight: 16 },
+  anomalyDesc: { fontSize: 12, color: '#CC8080', lineHeight: 17 },
   anomalyFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 9,
+    marginTop: 10,
   },
-  anomalyAmt: { fontSize: 15, fontWeight: '500', color: C.red },
+  anomalyAmt: { fontSize: 16, fontWeight: '700', color: C.red },
   reviewBtn: {
-    backgroundColor: C.red + '20',
+    backgroundColor: C.red + '22',
     borderWidth: 0.5,
-    borderColor: C.red + '50',
+    borderColor: C.red + '55',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  reviewBtnText: { fontSize: 10, color: C.red, fontWeight: '500' },
+  reviewBtnText: { fontSize: 11, color: C.red, fontWeight: '600' },
 
-  // ── Savings pill ──────────────────────────────────────────────────────────
+  // Savings pill
   savingsPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 8,
     backgroundColor: C.greenDim,
     borderWidth: 0.5,
     borderColor: C.greenBdr,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 11,
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    marginTop: 12,
   },
-  savingsPillText: { fontSize: 11, color: C.green, fontWeight: '500' },
+  savingsPillIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: C.green + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savingsPillText: { fontSize: 12, color: C.green, fontWeight: '500', flex: 1 },
 
-  // ── Waveform loader ───────────────────────────────────────────────────────
+  // Semantic cards (income / subscriptions)
+  semanticCard: {
+    borderWidth: 0.5,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    gap: 8,
+  },
+  semanticCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  semanticIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  semanticCardTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  semanticCardText: { fontSize: 12, color: C.textPrimary, lineHeight: 18 },
+  subRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  subName: { fontSize: 12, color: C.textPrimary },
+  subAmount: { fontSize: 12, fontWeight: '700' },
+
+  // Waveform loader
   waveRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   waveBars: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 22 },
   waveBar: { width: 3, height: 18, borderRadius: 2, backgroundColor: C.gold },
   waveLabel: { fontSize: 11, color: C.textSecondary, fontStyle: 'italic' },
 
-  // ── Input bar ─────────────────────────────────────────────────────────────
-  // paddingBottom is injected inline via inputPaddingBottom
-  inputBar: {
-    backgroundColor: C.bg,
-    paddingHorizontal: 14,
-    paddingTop: 8,
-  },
-  inputSep: {
-    height: 0.5,
-    backgroundColor: C.border,
-    marginBottom: 10,
-  },
-  inputRow: {
+  // Suggestions
+  suggestionContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 9,
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 7,
   },
+  suggestionChip: {
+    backgroundColor: C.goldMuted,
+    borderWidth: 0.5,
+    borderColor: C.gold + '30',
+    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  suggestionContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  suggestionText: { color: C.gold, fontSize: 11, fontWeight: '600' },
+
+  // Input bar
+  inputBar: { backgroundColor: C.bg, paddingHorizontal: 14, paddingTop: 8 },
+  inputSep: { height: 0.5, backgroundColor: C.border, marginBottom: 10 },
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 9 },
   inputWrap: {
     flex: 1,
-    backgroundColor: C.bgInput,
-    borderRadius: 14,
+    backgroundColor: C.bgSurface,
+    borderRadius: 16,
     borderWidth: 0.5,
     borderColor: C.border,
-    paddingHorizontal: 13,
-    paddingTop: Platform.OS === 'ios' ? 11 : 7,
-    paddingBottom: Platform.OS === 'ios' ? 11 : 7,
-    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingTop: Platform.OS === 'ios' ? 11 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 11 : 8,
+    minHeight: 46,
     justifyContent: 'flex-start',
   },
   input: {
@@ -1717,9 +1869,9 @@ const g = StyleSheet.create({
     margin: 0,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -1729,121 +1881,6 @@ const g = StyleSheet.create({
     backgroundColor: C.bgElevated,
     borderWidth: 0.5,
     borderColor: C.border,
-  },
-  subscriptionCard: {
-    marginTop: 10,
-    backgroundColor: C.purpleDim,
-    borderWidth: 1,
-    borderColor: C.purple,
-    borderRadius: 12,
-    padding: 12,
-  },
-  categoryCard: {
-    backgroundColor: '#141414',
-
-    borderRadius: 20,
-
-    padding: 18,
-
-    marginTop: 12,
-
-    borderWidth: 1,
-
-    borderColor: 'rgba(212,175,55,0.12)',
-  },
-
-  categoryRow: {
-    marginBottom: 18,
-  },
-
-  categoryHeader: {
-    flexDirection: 'row',
-
-    justifyContent: 'space-between',
-
-    alignItems: 'center',
-
-    marginBottom: 8,
-  },
-
-  categoryLabel: {
-    color: '#FFFFFF',
-
-    fontSize: 15,
-
-    fontWeight: '600',
-  },
-
-  categoryAmount: {
-    color: '#D4AF37',
-
-    fontSize: 15,
-
-    fontWeight: '700',
-  },
-
-  progressTrack: {
-    height: 10,
-
-    backgroundColor: 'rgba(255,255,255,0.08)',
-
-    borderRadius: 999,
-
-    overflow: 'hidden',
-  },
-
-  progressFill: {
-    height: '100%',
-
-    borderRadius: 999,
-  },
-
-  categoryPercent: {
-    color: '#8A8A8A',
-
-    fontSize: 12,
-
-    marginTop: 6,
-
-    textAlign: 'right',
-  },
-  suggestionContainer: {
-    flexDirection: 'row',
-
-    flexWrap: 'wrap',
-
-    marginTop: 12,
-
-    gap: 8,
-  },
-
-  suggestionChip: {
-    backgroundColor: 'rgba(212,175,55,0.12)',
-
-    borderWidth: 1,
-
-    borderColor: 'rgba(212,175,55,0.25)',
-
-    borderRadius: 20,
-
-    paddingHorizontal: 12,
-
-    paddingVertical: 8,
-  },
-
-  suggestionText: {
-    color: '#D4AF37',
-
-    fontSize: 12,
-
-    fontWeight: '600',
-  },
-  suggestionContent: {
-    flexDirection: 'row',
-
-    alignItems: 'center',
-
-    gap: 6,
   },
 });
 

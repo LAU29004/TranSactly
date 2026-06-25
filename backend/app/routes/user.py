@@ -10,16 +10,19 @@ from app.services.auth.dependencies import (
 from app.services.user.user_service import (
     get_me,
 )
+from fastapi import Request
+from app.middleware.rate_limiter import limiter
 
 router = APIRouter(
-    prefix="/api/v1",
+    prefix="/api/v1/user",
     tags=["User"],
 )
 
 
 @router.get("/me")
+@limiter.limit("120/minute")
 def me(
-
+    request: Request,
     current_user: User = Depends(
         get_current_user
     ),

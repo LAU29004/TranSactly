@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState } from "react";
-import { Transaction } from "../types/Transaction";
-import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import React, { createContext, useContext, useState } from 'react';
+import { Transaction } from '../types/Transaction';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
+import { secureSet , secureGet } from '../services/secureStorage';
 const TRANSACTION_CACHE_KEY = 'TRANSACTION_CACHE';
 type ContextType = {
   transactions: Transaction[];
@@ -10,47 +11,38 @@ type ContextType = {
 
 const TransactionContext = createContext<ContextType | null>(null);
 
-export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-const [transactions, setTransactions] = useState<Transaction[]>([]);
+export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-useEffect(() => {
-  const loadCachedTransactions = async () => {
-    try {
-      const cached = await AsyncStorage.getItem(
-        TRANSACTION_CACHE_KEY,
-      );
+  useEffect(() => {
+    const loadCachedTransactions = async () => {
+      try {
+        const cached =await secureGet(TRANSACTION_CACHE_KEY,);
 
-      if (cached) {
-        setTransactions(JSON.parse(cached));
+        if (cached) {
+          setTransactions(JSON.parse(cached));
+        }
+      } catch (e) {
+        console.log('TRANSACTION CACHE LOAD ERROR:', e);
       }
-    } catch (e) {
-      console.log(
-        'TRANSACTION CACHE LOAD ERROR:',
-        e,
-      );
-    }
-  };
+    };
 
-  loadCachedTransactions();
-}, []);
+    loadCachedTransactions();
+  }, []);
 
-useEffect(() => {
-  const saveTransactions = async () => {
-    try {
-      await AsyncStorage.setItem(
-        TRANSACTION_CACHE_KEY,
-        JSON.stringify(transactions),
-      );
-    } catch (e) {
-      console.log(
-        'TRANSACTION CACHE SAVE ERROR:',
-        e,
-      );
-    }
-  };
+  useEffect(() => {
+    const saveTransactions = async () => {
+      try {
+        await secureSet(TRANSACTION_CACHE_KEY, transactions);
+      } catch (e) {
+        console.log('TRANSACTION CACHE SAVE ERROR:', e);
+      }
+    };
 
-  saveTransactions();
-}, [transactions]);
+    saveTransactions();
+  }, [transactions]);
 
   return (
     <TransactionContext.Provider value={{ transactions, setTransactions }}>
@@ -61,6 +53,6 @@ useEffect(() => {
 
 export const useTransactions = () => {
   const context = useContext(TransactionContext);
-  if (!context) throw new Error("useTransactions must be used inside provider");
+  if (!context) throw new Error('useTransactions must be used inside provider');
   return context;
 };

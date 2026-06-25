@@ -15,22 +15,21 @@ import {
   UIManager,
   Modal,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
-import { Colors, Space, Radius, Font } from '../theme';
 import { FilterState } from '../types/Transaction';
-// import { useTransactions } from '../context/TransactionContext';
 import { parseSMSIntoTransactions } from '../services/readSms';
 import { fetchInsights, fetchTransactions } from '../services/api/insightsApi';
 import { downloadExcel } from '../services/api/exportApi';
 import RNFS from 'react-native-fs';
 import FileViewer from 'react-native-file-viewer';
 import { Buffer } from 'buffer';
-
+import { useNavigation } from '@react-navigation/native';
 if (
   Platform.OS === 'android' &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -40,8 +39,43 @@ if (
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-// ─── Types & constants ────────────────────────────────────────────────────────
+// ─── Revolut palette (local, so no theme dependency for new tokens) ───────────
+const R = {
+  bg: '#0B0F17',
+  bgSurface: '#141A23',
+  bgElevated: '#1C2333',
+  bgInput: '#0F1420',
+  border: '#1E2535',
+  borderSoft: '#161D2A',
 
+  gold: '#D4AF37',
+  goldBright: '#F0CE5A',
+  goldDim: '#1A1608',
+  goldBorder: '#2A2210',
+  goldMuted: 'rgba(212,175,55,0.10)',
+  goldText: '#F0CE5A',
+
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textTertiary: '#4B5563',
+  textInverse: '#0B0F17',
+
+  green: '#10B981',
+  greenDim: '#071A12',
+  greenBdr: '#0D3322',
+
+  red: '#EF4444',
+  redDim: '#1A0808',
+  redBdr: '#3A1212',
+
+  purple: '#8B5CF6',
+  purpleDim: '#110E2A',
+
+  amber: '#F59E0B',
+  teal: '#14B8A6',
+};
+
+// ─── Types & constants ─────────────────────────────────────────────────────────
 type QuickRange = 'THIS_MONTH' | 'SIX_MONTHS' | 'THIS_YEAR';
 const QUICK_RANGES: QuickRange[] = ['THIS_MONTH', 'SIX_MONTHS', 'THIS_YEAR'];
 
@@ -60,8 +94,7 @@ const fmtDisplay = (d: Date) =>
     year: 'numeric',
   });
 
-// ─── Scan modules ─────────────────────────────────────────────────────────────
-
+// ─── Scan modules ──────────────────────────────────────────────────────────────
 type ScanModule = { id: string; icon: string; label: string; desc: string };
 
 const SCAN_MODULES: ScanModule[] = [
@@ -115,8 +148,7 @@ const SCAN_MODULES: ScanModule[] = [
   },
 ];
 
-// ─── Loading steps ────────────────────────────────────────────────────────────
-
+// ─── Loading steps ─────────────────────────────────────────────────────────────
 const LOADING_STEPS: { msg: string; sub: string }[] = [
   {
     msg: 'Scanning SMS messages…',
@@ -134,14 +166,10 @@ const LOADING_STEPS: { msg: string; sub: string }[] = [
     msg: 'Generating insights…',
     sub: 'Calculating income, expenses and savings',
   },
-  {
-    msg: 'Preparing dashboard…',
-    sub: 'Almost ready',
-  },
+  { msg: 'Preparing dashboard…', sub: 'Almost ready' },
 ];
 
-// ─── Insight type ─────────────────────────────────────────────────────────────
-
+// ─── Insight type ──────────────────────────────────────────────────────────────
 type InsightData = {
   totalExpenses: number;
   totalIncome: number;
@@ -157,8 +185,7 @@ type InsightData = {
   topMerchants: { merchant: string; amount: number; count: number }[];
 };
 
-// ─── Category colours ─────────────────────────────────────────────────────────
-
+// ─── Category colours ──────────────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
   Food: '#F97316',
   Shopping: '#8B5CF6',
@@ -167,26 +194,35 @@ const CATEGORY_COLORS: Record<string, string> = {
   Health: '#10B981',
   Utilities: '#F59E0B',
   'Home Improvement': '#1830b8',
-  Income: '#3DCB7F',
+  Income: '#10B981',
   Others: '#6B7280',
 };
 
-// ─── Calendar theme ───────────────────────────────────────────────────────────
+const handleVisitWebsite = async () => {
+  const url = 'https://transactly.ai';
 
+  const supported = await Linking.canOpenURL(url);
+
+  if (supported) {
+    await Linking.openURL(url);
+  }
+};
+
+// ─── Calendar theme ────────────────────────────────────────────────────────────
 const calendarTheme = {
-  backgroundColor: Colors.bgCard,
-  calendarBackground: Colors.bgCard,
-  textSectionTitleColor: Colors.textMuted,
-  selectedDayBackgroundColor: Colors.gold,
-  selectedDayTextColor: Colors.textInverse,
-  todayTextColor: Colors.gold,
-  dayTextColor: Colors.textPrimary,
-  textDisabledColor: Colors.textMuted,
-  dotColor: Colors.gold,
-  selectedDotColor: Colors.textInverse,
-  arrowColor: Colors.gold,
-  monthTextColor: Colors.textPrimary,
-  indicatorColor: Colors.gold,
+  backgroundColor: R.bgSurface,
+  calendarBackground: R.bgSurface,
+  textSectionTitleColor: R.textTertiary,
+  selectedDayBackgroundColor: R.gold,
+  selectedDayTextColor: R.textInverse,
+  todayTextColor: R.gold,
+  dayTextColor: R.textPrimary,
+  textDisabledColor: R.textTertiary,
+  dotColor: R.gold,
+  selectedDotColor: R.textInverse,
+  arrowColor: R.gold,
+  monthTextColor: R.textPrimary,
+  indicatorColor: R.gold,
   textDayFontWeight: '400' as any,
   textMonthFontWeight: '600' as any,
   textDayHeaderFontWeight: '600' as any,
@@ -195,8 +231,9 @@ const calendarTheme = {
   textDayHeaderFontSize: 11,
 };
 
-// ─── AIWaveform ───────────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// AIWaveform
+// ═══════════════════════════════════════════════════════════════════════════════
 const AIWaveform: React.FC<{ active?: boolean }> = ({ active = false }) => {
   const bars = [0.4, 0.7, 1, 0.6, 0.9, 0.5, 0.8, 0.45, 0.75, 1, 0.6, 0.35];
   const anims = useRef(bars.map(h => new Animated.Value(h))).current;
@@ -236,7 +273,7 @@ const AIWaveform: React.FC<{ active?: boolean }> = ({ active = false }) => {
             waveStyles.bar,
             {
               transform: [{ scaleY: anim }],
-              backgroundColor: active ? Colors.gold : Colors.border,
+              backgroundColor: active ? R.gold : R.border,
             },
           ]}
         />
@@ -250,8 +287,9 @@ const waveStyles = StyleSheet.create({
   bar: { width: 3, height: 24, borderRadius: 2 },
 });
 
-// ─── ScanModuleRow ────────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// ScanModuleRow
+// ═══════════════════════════════════════════════════════════════════════════════
 const ScanModuleRow: React.FC<{
   module: ScanModule;
   enabled: boolean;
@@ -287,8 +325,8 @@ const ScanModuleRow: React.FC<{
         <View style={[smStyles.iconBox, enabled && smStyles.iconBoxActive]}>
           <MaterialCommunityIcons
             name={module.icon as any}
-            size={18}
-            color={enabled ? Colors.gold : Colors.textMuted}
+            size={17}
+            color={enabled ? R.gold : R.textTertiary}
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -300,9 +338,9 @@ const ScanModuleRow: React.FC<{
         <Switch
           value={enabled}
           onValueChange={onToggle}
-          trackColor={{ false: Colors.border, true: Colors.gold }}
-          thumbColor={Colors.bg}
-          ios_backgroundColor={Colors.border}
+          trackColor={{ false: R.border, true: R.gold + '80' }}
+          thumbColor={enabled ? R.gold : R.textTertiary}
+          ios_backgroundColor={R.border}
         />
       </TouchableOpacity>
     </Animated.View>
@@ -314,119 +352,52 @@ const smStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
-  rowDivider: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  rowDivider: { borderBottomWidth: 0.5, borderBottomColor: R.border },
   iconBox: {
     width: 40,
     height: 40,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.bgElevated,
+    borderRadius: 12,
+    backgroundColor: R.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: Colors.border,
+    borderColor: R.border,
   },
-  iconBoxActive: {
-    backgroundColor: Colors.goldMuted,
-    borderColor: Colors.goldBorder,
-  },
+  iconBoxActive: { backgroundColor: R.goldMuted, borderColor: R.goldBorder },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.textPrimary,
+    color: R.textPrimary,
     marginBottom: 2,
   },
-  labelDim: { color: Colors.textMuted },
-  desc: { fontSize: 10, color: Colors.textMuted },
+  labelDim: { color: R.textTertiary },
+  desc: { fontSize: 10, color: R.textTertiary },
 });
 
-// ─── AIPredictionCard ─────────────────────────────────────────────────────────
-
-const AIPredictionCard: React.FC<{ enabledCount: number }> = ({
-  enabledCount,
-}) => {
-  const pulse = useRef(new Animated.Value(0.5)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.5,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
-
-  const messages = Math.round(enabledCount * 23);
-  const entities = Math.round(enabledCount * 10.5);
-  const merchants = Math.round(enabledCount * 1.4);
-  const unusual = Math.max(1, Math.round(enabledCount * 0.38));
-
-  return (
-    <View style={aiStyles.card}>
-      <View style={aiStyles.headerRow}>
-        <View style={aiStyles.brainBox}>
-          <MaterialCommunityIcons name="brain" size={15} color={Colors.gold} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={aiStyles.headerSub}>AI PREDICTION ENGINE</Text>
-          <Text style={aiStyles.headerTitle}>Analysis Preview</Text>
-        </View>
-        <Animated.View style={[aiStyles.liveDot, { opacity: pulse }]} />
-        <Text style={aiStyles.liveLabel}>LIVE</Text>
-      </View>
-
-      <Text style={aiStyles.quoteText}>
-        "Predicted {entities} financial entities across {merchants} merchants in
-        your selected range."
-      </Text>
-
-      <View style={aiStyles.statsGrid}>
-        {[
-          { val: `~${messages}`, label: 'SMS', icon: 'message-text-outline' },
-          { val: `~${entities}`, label: 'ENTITIES', icon: 'tag-outline' },
-          { val: `~${merchants}`, label: 'MERCHANTS', icon: 'store-outline' },
-          { val: `~${unusual}`, label: 'UNUSUAL', icon: 'alert-outline' },
-        ].map(s => (
-          <View key={s.label} style={aiStyles.statBox}>
-            <MaterialCommunityIcons
-              name={s.icon as any}
-              size={13}
-              color={Colors.gold}
-            />
-            <Text style={aiStyles.statVal}>{s.val}</Text>
-            <Text style={aiStyles.statLabel}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
+// ═══════════════════════════════════════════════════════════════════════════════
+// AIPredictionCard
+// ═══════════════════════════════════════════════════════════════════════════════
 
 const aiStyles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.lg,
+    backgroundColor: R.bgElevated,
+    borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: Colors.goldBorder,
-    padding: Space.xl,
-    marginBottom: Space.md,
-    gap: Space.md,
+    borderColor: R.goldBorder,
+    padding: 18,
+    marginBottom: 12,
+    gap: 14,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brainBox: {
-    width: 30,
-    height: 30,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.goldMuted,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: R.goldMuted,
+    borderWidth: 0.5,
+    borderColor: R.goldBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -434,52 +405,57 @@ const aiStyles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: Colors.gold,
+    color: R.gold,
   },
   headerTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.textPrimary,
-    marginTop: 1,
+    color: R.textPrimary,
+    marginTop: 2,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#3DCB7F' },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: R.green },
   liveLabel: {
     fontSize: 8,
     fontWeight: '700',
-    color: '#3DCB7F',
+    color: R.green,
     letterSpacing: 1,
   },
   quoteText: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: R.textSecondary,
     lineHeight: 18,
     fontStyle: 'italic',
   },
   statsGrid: { flexDirection: 'row', gap: 8 },
   statBox: {
     flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.sm,
-    padding: Space.sm,
+    backgroundColor: R.bgSurface,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: R.border,
+    padding: 10,
     alignItems: 'center',
     gap: 4,
   },
-  statVal: { fontSize: 17, fontWeight: '700', color: Colors.gold },
+  statVal: { fontSize: 16, fontWeight: '700', color: R.gold },
   statLabel: {
     fontSize: 8,
     fontWeight: '700',
     letterSpacing: 0.7,
-    color: Colors.textMuted,
+    color: R.textTertiary,
     textAlign: 'center',
   },
 });
 
-// ─── PrivacyShieldCard ────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// PrivacyShieldCard
+// ═══════════════════════════════════════════════════════════════════════════════
 const PrivacyShieldCard: React.FC = () => (
   <View style={privStyles.card}>
     <View style={privStyles.headerRow}>
-      <MaterialCommunityIcons name="shield-check" size={16} color="#3DCB7F" />
+      <View style={privStyles.shieldIcon}>
+        <MaterialCommunityIcons name="shield-check" size={15} color={R.green} />
+      </View>
       <Text style={privStyles.headerLabel}>PRIVACY SHIELD ACTIVE</Text>
       <View style={privStyles.activePill}>
         <Text style={privStyles.activePillText}>SECURED</Text>
@@ -504,12 +480,14 @@ const PrivacyShieldCard: React.FC = () => (
         <View style={privStyles.iconCircle}>
           <MaterialCommunityIcons
             name={item.icon as any}
-            size={14}
-            color="#3DCB7F"
+            size={13}
+            color={R.green}
           />
         </View>
         <Text style={privStyles.rowText}>{item.text}</Text>
-        <Feather name="check" size={12} color="#3DCB7F" />
+        <View style={privStyles.checkBox}>
+          <Feather name="check" size={10} color={R.green} />
+        </View>
       </View>
     ))}
   </View>
@@ -517,34 +495,42 @@ const PrivacyShieldCard: React.FC = () => (
 
 const privStyles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
+    backgroundColor: R.bgSurface,
+    borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: 'rgba(61,203,127,0.25)',
-    padding: Space.xl,
-    marginBottom: Space.xl,
-    gap: Space.md,
+    borderColor: 'rgba(16,185,129,0.22)',
+    padding: 18,
+    marginBottom: 20,
+    gap: 12,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  shieldIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(16,185,129,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerLabel: {
     flex: 1,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: '#3DCB7F',
+    color: R.green,
   },
   activePill: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    backgroundColor: 'rgba(61,203,127,0.1)',
+    paddingVertical: 3,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16,185,129,0.10)',
     borderWidth: 0.5,
-    borderColor: 'rgba(61,203,127,0.3)',
+    borderColor: 'rgba(16,185,129,0.28)',
   },
   activePillText: {
     fontSize: 8,
     fontWeight: '700',
-    color: '#3DCB7F',
+    color: R.green,
     letterSpacing: 1,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -552,20 +538,24 @@ const privStyles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(61,203,127,0.08)',
+    backgroundColor: 'rgba(16,185,129,0.07)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowText: {
-    flex: 1,
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 17,
+  rowText: { flex: 1, fontSize: 12, color: R.textSecondary, lineHeight: 17 },
+  checkBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(16,185,129,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
-// ─── LoadingCard ──────────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// LoadingCard
+// ═══════════════════════════════════════════════════════════════════════════════
 const LoadingCard: React.FC<{
   stepIndex: number;
   pct: number;
@@ -586,8 +576,10 @@ const LoadingCard: React.FC<{
           <Text style={ldStyles.pctSym}>%</Text>
         </View>
       </View>
-      <Text style={ldStyles.stepMsg}>{step.msg}</Text>
-      <Text style={ldStyles.stepSub}>{step.sub}</Text>
+      <View>
+        <Text style={ldStyles.stepMsg}>{step.msg}</Text>
+        <Text style={ldStyles.stepSub}>{step.sub}</Text>
+      </View>
       <View style={ldStyles.track}>
         <Animated.View style={[ldStyles.fill, { width: progressWidth }]} />
       </View>
@@ -609,13 +601,13 @@ const LoadingCard: React.FC<{
 
 const ldStyles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
+    backgroundColor: R.bgSurface,
+    borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: Colors.goldBorder,
-    padding: Space.xl,
-    marginBottom: Space.md,
-    gap: Space.md,
+    borderColor: R.goldBorder,
+    padding: 18,
+    marginBottom: 12,
+    gap: 14,
   },
   topRow: {
     flexDirection: 'row',
@@ -623,81 +615,62 @@ const ldStyles = StyleSheet.create({
     alignItems: 'center',
   },
   pctBlock: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  pctNum: {
-    fontSize: 36,
-    fontWeight: '200',
-    color: Colors.gold,
-    lineHeight: 40,
-  },
-  pctSym: {
-    fontSize: 14,
+  pctNum: { fontSize: 36, fontWeight: '200', color: R.gold, lineHeight: 40 },
+  pctSym: { fontSize: 14, fontWeight: '600', color: R.gold, marginBottom: 5 },
+  stepMsg: {
+    fontSize: 13,
     fontWeight: '600',
-    color: Colors.gold,
-    marginBottom: 5,
+    color: R.textPrimary,
+    marginBottom: 3,
   },
-  stepMsg: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-  stepSub: { fontSize: 10, color: Colors.textMuted, fontStyle: 'italic' },
+  stepSub: { fontSize: 10, color: R.textTertiary, fontStyle: 'italic' },
   track: {
     height: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: R.border,
     borderRadius: 1,
     overflow: 'hidden',
   },
-  fill: { height: '100%', backgroundColor: Colors.gold, borderRadius: 1 },
+  fill: { height: '100%', backgroundColor: R.gold, borderRadius: 1 },
   dotsRow: { flexDirection: 'row', gap: 6 },
-  dot: { flex: 1, height: 3, borderRadius: 2, backgroundColor: Colors.border },
-  dotDone: { backgroundColor: Colors.goldMuted },
-  dotActive: { backgroundColor: Colors.gold },
+  dot: { flex: 1, height: 3, borderRadius: 2, backgroundColor: R.border },
+  dotDone: { backgroundColor: R.goldMuted },
+  dotActive: { backgroundColor: R.gold },
 });
 
-// ─── InsightsDashboard ────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// InsightsDashboard
+// ═══════════════════════════════════════════════════════════════════════════════
 const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
-  console.log('DASHBOARD DATA', JSON.stringify(data, null, 2));
   const onlyTransfers =
     data.transactionCount > 0 && data.categoryBreakdown.length === 0;
 
-  if (onlyTransfers) {
+  if (onlyTransfers || data.categoryBreakdown.length === 0) {
     return (
-      <View style={styles.emptyState}>
-        <MaterialCommunityIcons
-          name="database-remove-outline"
-          size={52}
-          color={Colors.textMuted}
-          style={{ marginBottom: Space.lg }}
-        />
-
-        <Text style={styles.emptyTitle}>No Spending Transactions Found</Text>
-
-        <Text style={styles.emptyText}>
-          Only transfer transactions were detected in the selected period.
+      <View style={inStyles.emptyState}>
+        <View style={inStyles.emptyIcon}>
+          <MaterialCommunityIcons
+            name="database-remove-outline"
+            size={28}
+            color={R.textTertiary}
+          />
+        </View>
+        <Text style={inStyles.emptyTitle}>
+          {onlyTransfers
+            ? 'No Spending Transactions Found'
+            : 'No Transactions Found'}
         </Text>
-      </View>
-    );
-  }
-  if (data.categoryBreakdown.length === 0) {
-    return (
-      <View style={styles.emptyState}>
-        <MaterialCommunityIcons
-          name="database-remove-outline"
-          size={52}
-          color={Colors.textMuted}
-          style={{ marginBottom: Space.lg }}
-        />
-
-        <Text style={styles.emptyTitle}>No Transactions Found</Text>
-
-        <Text style={styles.emptyText}>
-          No financial SMS were detected in the selected time range.
+        <Text style={inStyles.emptyText}>
+          {onlyTransfers
+            ? 'Only transfer transactions were detected in the selected period.'
+            : 'No financial SMS were detected in the selected time range.'}
         </Text>
       </View>
     );
   }
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(24)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
   const categories = data.categoryBreakdown ?? [];
-
   const barAnims = useMemo(
     () => categories.map(() => new Animated.Value(0)),
     [categories.length],
@@ -707,15 +680,19 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 550,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 600,
+        duration: 550,
         useNativeDriver: true,
       }),
     ]).start();
+    const barAnimations = barAnims.map(a =>
+      Animated.timing(a, { toValue: 1, duration: 700, useNativeDriver: false }),
+    );
+    Animated.stagger(60, barAnimations).start();
   }, []);
 
   const maxCat = Math.max(
@@ -723,52 +700,79 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
     1,
   );
 
+  const savingsColor =
+    data.savingsRate >= 20 ? R.green : data.savingsRate >= 10 ? R.gold : R.red;
+
   return (
     <Animated.View
       style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
     >
-      {/* completion badge */}
-      <View style={inStyles.sectionHeader}>
-        <View style={inStyles.sectionLeft}>
-          <MaterialCommunityIcons name="brain" size={14} color={Colors.gold} />
-          <Text style={inStyles.sectionLabel}>AI ANALYSIS COMPLETE</Text>
+      {/* ── Completion badge ── */}
+      <View style={inStyles.completionBanner}>
+        <View style={inStyles.completionLeft}>
+          <View style={inStyles.completionIcon}>
+            <MaterialCommunityIcons name="brain" size={13} color={R.gold} />
+          </View>
+          <View>
+            <Text style={inStyles.completionLabel}>AI ANALYSIS COMPLETE</Text>
+            <Text style={inStyles.completionSub}>
+              {data.transactionCount} transactions processed
+            </Text>
+          </View>
         </View>
         <View style={inStyles.donePill}>
-          <Text style={inStyles.donePillText}>✓ DONE</Text>
+          <Feather name="check" size={10} color={R.green} />
+          <Text style={inStyles.donePillText}>DONE</Text>
         </View>
       </View>
 
-      {/* income / expenses / savings */}
+      {/* ── Income / Expenses / Savings trio ── */}
       <View style={inStyles.trioRow}>
         {[
           {
             label: 'INCOME',
             val: data.totalIncome,
-            color: '#3DCB7F',
+            color: R.green,
             icon: 'trending-up',
+            bg: R.greenDim,
+            bdr: R.greenBdr,
           },
           {
             label: 'EXPENSES',
             val: data.totalExpenses,
-            color: '#E05C6B',
+            color: R.red,
             icon: 'trending-down',
+            bg: R.redDim,
+            bdr: R.redBdr,
           },
           {
             label: 'SAVINGS',
             val: data.totalSavings,
-            color: Colors.gold,
+            color: R.gold,
             icon: 'piggy-bank-outline',
+            bg: R.goldDim,
+            bdr: R.goldBorder,
           },
         ].map(item => (
           <View
             key={item.label}
-            style={[inStyles.trioCard, { borderColor: `${item.color}40` }]}
+            style={[
+              inStyles.trioCard,
+              { borderColor: item.bdr, backgroundColor: item.bg },
+            ]}
           >
-            <MaterialCommunityIcons
-              name={item.icon as any}
-              size={16}
-              color={item.color}
-            />
+            <View
+              style={[
+                inStyles.trioIcon,
+                { backgroundColor: item.color + '18' },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={item.icon as any}
+                size={14}
+                color={item.color}
+              />
+            </View>
             <Text style={inStyles.trioLabel}>{item.label}</Text>
             <Text style={[inStyles.trioVal, { color: item.color }]}>
               ₹{Number(item.val ?? 0).toLocaleString('en-IN')}
@@ -777,24 +781,12 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
         ))}
       </View>
 
-      {/* savings rate */}
+      {/* ── Savings rate ── */}
       <View style={inStyles.card}>
         <View style={inStyles.cardHeaderRow}>
-          <Feather name="bar-chart-2" size={13} color={Colors.textMuted} />
+          <Feather name="bar-chart-2" size={12} color={R.textTertiary} />
           <Text style={inStyles.cardLabel}>SAVINGS RATE</Text>
-          <Text
-            style={[
-              inStyles.savingsRateVal,
-              {
-                color:
-                  data.savingsRate >= 20
-                    ? '#3DCB7F'
-                    : data.savingsRate >= 10
-                    ? Colors.gold
-                    : '#E05C6B',
-              },
-            ]}
-          >
+          <Text style={[inStyles.savingsRateVal, { color: savingsColor }]}>
             {data.savingsRate.toFixed(1)}%
           </Text>
         </View>
@@ -804,32 +796,44 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
               inStyles.rateFill,
               {
                 width: `${Math.min(data.savingsRate, 100)}%` as any,
-                backgroundColor:
-                  data.savingsRate >= 20
-                    ? '#3DCB7F'
-                    : data.savingsRate >= 10
-                    ? Colors.gold
-                    : '#E05C6B',
+                backgroundColor: savingsColor,
               },
             ]}
           />
         </View>
-        <Text style={inStyles.rateHint}>
-          {data.savingsRate >= 20
-            ? "✦ Excellent! You're saving more than 20% of income."
-            : data.savingsRate >= 10
-            ? '⚠ Moderate savings. Aim for 20%+ for financial health.'
-            : '⚠ Low savings rate. Review your discretionary spending.'}
-        </Text>
+        <View
+          style={[
+            inStyles.rateHintRow,
+            {
+              borderColor: savingsColor + '20',
+              backgroundColor: savingsColor + '0A',
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={
+              data.savingsRate >= 20 ? 'check-circle-outline' : 'alert-outline'
+            }
+            size={12}
+            color={savingsColor}
+          />
+          <Text style={[inStyles.rateHint, { color: savingsColor }]}>
+            {data.savingsRate >= 20
+              ? "Excellent! You're saving more than 20% of income."
+              : data.savingsRate >= 10
+              ? 'Moderate savings. Aim for 20%+ for financial health.'
+              : 'Low savings rate. Review your discretionary spending.'}
+          </Text>
+        </View>
       </View>
 
-      {/* category breakdown */}
+      {/* ── Category breakdown ── */}
       <View style={inStyles.card}>
         <View style={inStyles.cardHeaderRow}>
           <MaterialCommunityIcons
             name="chart-donut"
-            size={13}
-            color={Colors.textMuted}
+            size={12}
+            color={R.textTertiary}
           />
           <Text style={inStyles.cardLabel}>SPENDING BY CATEGORY</Text>
         </View>
@@ -839,26 +843,16 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
               inputRange: [0, 1],
               outputRange: ['0%', `${(cat.amount / maxCat) * 100}%`],
             }) ?? '0%';
+          const color = CATEGORY_COLORS[cat.category] ?? '#6B7280';
           return (
             <View key={cat.category} style={inStyles.catRow}>
-              <View
-                style={[
-                  inStyles.catDot,
-                  {
-                    backgroundColor: CATEGORY_COLORS[cat.category] ?? '#6B7280',
-                  },
-                ]}
-              />
+              <View style={[inStyles.catDot, { backgroundColor: color }]} />
               <Text style={inStyles.catName}>{cat.category}</Text>
               <View style={inStyles.catBarWrap}>
                 <Animated.View
                   style={[
                     inStyles.catBar,
-                    {
-                      width: barW,
-                      backgroundColor:
-                        CATEGORY_COLORS[cat.category] ?? '#6B7280',
-                    },
+                    { width: barW, backgroundColor: color },
                   ]}
                 />
               </View>
@@ -871,13 +865,13 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
         })}
       </View>
 
-      {/* top merchants */}
+      {/* ── Top merchants ── */}
       <View style={inStyles.card}>
         <View style={inStyles.cardHeaderRow}>
           <MaterialCommunityIcons
             name="store-outline"
-            size={13}
-            color={Colors.textMuted}
+            size={12}
+            color={R.textTertiary}
           />
           <Text style={inStyles.cardLabel}>TOP MERCHANTS</Text>
         </View>
@@ -890,8 +884,23 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
                 inStyles.merchantDivider,
             ]}
           >
-            <View style={inStyles.merchantRank}>
-              <Text style={inStyles.merchantRankText}>{i + 1}</Text>
+            <View
+              style={[
+                inStyles.merchantRank,
+                i === 0 && {
+                  backgroundColor: R.goldMuted,
+                  borderColor: R.goldBorder,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  inStyles.merchantRankText,
+                  i === 0 && { color: R.gold },
+                ]}
+              >
+                {i + 1}
+              </Text>
             </View>
             <Text style={inStyles.merchantName}>{m.merchant}</Text>
             {m.count && (
@@ -903,69 +912,125 @@ const InsightsDashboard: React.FC<{ data: InsightData }> = ({ data }) => {
           </View>
         ))}
       </View>
-
-      {/* subscriptions */}
-
-      {/* quick stats */}
-
-      {/* AI recommendation */}
     </Animated.View>
   );
 };
 
 const inStyles = StyleSheet.create({
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
+    backgroundColor: R.bgSurface,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: R.border,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    marginBottom: Space.md,
+    marginBottom: 16,
+    gap: 10,
   },
-  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionLabel: {
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: R.bgElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    color: R.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: R.textTertiary,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  completionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: R.bgSurface,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: R.goldBorder,
+    padding: 14,
+    marginBottom: 12,
+  },
+  completionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  completionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: R.goldMuted,
+    borderWidth: 0.5,
+    borderColor: R.goldBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1,
-    color: Colors.gold,
+    letterSpacing: 0.8,
+    color: R.gold,
   },
+  completionSub: { fontSize: 10, color: R.textTertiary, marginTop: 2 },
   donePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-    backgroundColor: 'rgba(61,203,127,0.1)',
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16,185,129,0.10)',
     borderWidth: 0.5,
-    borderColor: 'rgba(61,203,127,0.3)',
+    borderColor: 'rgba(16,185,129,0.28)',
   },
   donePillText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#3DCB7F',
+    color: R.green,
     letterSpacing: 0.8,
   },
-  trioRow: { flexDirection: 'row', gap: 8, marginBottom: Space.md },
+  trioRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   trioCard: {
     flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
+    borderRadius: 14,
     borderWidth: 0.5,
     padding: 12,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  trioIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   trioLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: Colors.textMuted,
+    color: R.textTertiary,
   },
-  trioVal: { fontSize: 12, fontWeight: '700', letterSpacing: -0.3 },
+  trioVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
   card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
+    backgroundColor: R.bgSurface,
+    borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: Colors.border,
-    padding: Space.xl,
-    marginBottom: Space.md,
-    gap: Space.md,
+    borderColor: R.border,
+    padding: 16,
+    marginBottom: 12,
+    gap: 12,
   },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardLabel: {
@@ -973,24 +1038,33 @@ const inStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: Colors.textMuted,
+    color: R.textTertiary,
   },
-  savingsRateVal: { fontSize: 18, fontWeight: '600' },
+  savingsRateVal: { fontSize: 18, fontWeight: '700' },
   rateTrack: {
     height: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: R.bgElevated,
     borderRadius: 2,
     overflow: 'hidden',
   },
   rateFill: { height: '100%', borderRadius: 2 },
-  rateHint: { fontSize: 11, color: Colors.textSecondary, lineHeight: 17 },
+  rateHintRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    borderWidth: 0.5,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: -2,
+  },
+  rateHint: { flex: 1, fontSize: 11, lineHeight: 17 },
   catRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   catDot: { width: 7, height: 7, borderRadius: 4 },
-  catName: { fontSize: 11, color: Colors.textPrimary, width: 82 },
+  catName: { fontSize: 11, color: R.textPrimary, width: 82 },
   catBarWrap: {
     flex: 1,
     height: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: R.bgElevated,
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -998,13 +1072,13 @@ const inStyles = StyleSheet.create({
   catAmt: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.textPrimary,
+    color: R.textPrimary,
     width: 64,
     textAlign: 'right',
   },
   catPct: {
     fontSize: 10,
-    color: Colors.textMuted,
+    color: R.textTertiary,
     width: 32,
     textAlign: 'right',
   },
@@ -1012,122 +1086,100 @@ const inStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
-  merchantDivider: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  merchantDivider: { borderBottomWidth: 0.5, borderBottomColor: R.border },
   merchantRank: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.bgElevated,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: R.bgElevated,
+    borderWidth: 0.5,
+    borderColor: R.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  merchantRankText: { fontSize: 10, fontWeight: '700', color: Colors.gold },
+  merchantRankText: { fontSize: 10, fontWeight: '700', color: R.textSecondary },
   merchantName: {
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
-    color: Colors.textPrimary,
+    color: R.textPrimary,
   },
-  merchantCount: { fontSize: 10, color: Colors.textMuted },
-  merchantAmt: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  subRow: { flexDirection: 'row', alignItems: 'center' },
-  subMerchant: { flex: 1, fontSize: 13, color: Colors.textPrimary },
-  subAmt: { fontSize: 12, fontWeight: '600', color: Colors.gold },
-  subTotalPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.goldMuted,
-    borderWidth: 0.5,
-    borderColor: Colors.goldBorder,
-  },
-  subTotalText: { fontSize: 9, fontWeight: '700', color: Colors.gold },
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: Space.md },
-  statBox: {
-    flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    padding: 12,
-    alignItems: 'center',
-    gap: 5,
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    color: Colors.textMuted,
-  },
-  statVal: { fontSize: 13, fontWeight: '700' },
-  recoCard: {
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.lg,
-    borderWidth: 0.5,
-    borderColor: Colors.goldBorder,
-    padding: Space.xl,
-    marginBottom: Space.md,
-    gap: Space.sm,
-  },
-  recoHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  recoLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    color: Colors.gold,
-  },
-  recoText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
+  merchantCount: { fontSize: 10, color: R.textTertiary },
+  merchantAmt: { fontSize: 13, fontWeight: '700', color: R.textPrimary },
 });
 
-// ─── computeInsights ──────────────────────────────────────────────────────────
-
-// ─── DateRangeModal ───────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// DateRangeModal
+// ═══════════════════════════════════════════════════════════════════════════════
 const DateRangeModal: React.FC<{
   visible: boolean;
   startDate: Date;
   endDate: Date;
   onConfirm: (start: Date, end: Date) => void;
   onClose: () => void;
-}> = ({ visible, startDate, endDate, onConfirm, onClose }) => {
+  currentDate: string;
+  setCurrentDate: (date: string) => void;
+}> = ({ visible, startDate, endDate, onConfirm, onClose, currentDate, setCurrentDate }) => {
   const [selecting, setSelecting] = useState<'start' | 'end'>('start');
   const [tempStart, setTempStart] = useState(fmt(startDate));
   const [tempEnd, setTempEnd] = useState(fmt(endDate));
+  
+  // State to toggle the scroll selector view
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setTempStart(fmt(startDate));
       setTempEnd(fmt(endDate));
       setSelecting('start');
+      setShowPicker(false);
     }
   }, [visible]);
+
+  // Generate dynamic array of years (e.g. 15 years back)
+  const years = useMemo(() => {
+    const currentYr = today.getFullYear();
+    return Array.from({ length: 16 }, (_, i) => currentYr - i);
+  }, []);
+
+  const months = [
+    { label: 'Jan', val: 1 }, { label: 'Feb', val: 2 }, { label: 'Mar', val: 3 },
+    { label: 'Apr', val: 4 }, { label: 'May', val: 5 }, { label: 'Jun', val: 6 },
+    { label: 'Jul', val: 7 }, { label: 'Aug', val: 8 }, { label: 'Sep', val: 9 },
+    { label: 'Oct', val: 10 }, { label: 'Nov', val: 11 }, { label: 'Dec', val: 12 }
+  ];
+
+  const currentParsedDate = new Date(currentDate);
+  const selectedYear = currentParsedDate.getFullYear();
+  const selectedMonth = currentParsedDate.getMonth() + 1;
+
+  const handleMonthYearSelect = (year: number, month: number) => {
+    const monthStr = String(month).padStart(2, '0');
+    setCurrentDate(`${year}-${monthStr}-01`);
+    setShowPicker(false);
+  };
 
   const buildMarked = () => {
     const marked: Record<string, any> = {};
     if (!tempStart) return marked;
     marked[tempStart] = {
       startingDay: true,
-      color: Colors.gold,
-      textColor: Colors.textInverse,
+      color: R.gold,
+      textColor: R.textInverse,
     };
     if (tempEnd && tempEnd !== tempStart) {
       marked[tempEnd] = {
         endingDay: true,
-        color: Colors.gold,
-        textColor: Colors.textInverse,
+        color: R.gold,
+        textColor: R.textInverse,
       };
       const cur = new Date(tempStart);
       cur.setDate(cur.getDate() + 1);
       const end = new Date(tempEnd);
       while (cur < end) {
-        marked[fmt(cur)] = { color: Colors.goldMuted, textColor: Colors.gold };
+        marked[fmt(cur)] = { color: R.goldMuted, textColor: R.gold };
         cur.setDate(cur.getDate() + 1);
       }
     }
@@ -1151,94 +1203,134 @@ const DateRangeModal: React.FC<{
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={modalStyles.overlay}>
         <View style={modalStyles.sheet}>
           <View style={modalStyles.handle} />
+
           <View style={modalStyles.header}>
             <View>
               <Text style={modalStyles.headerSub}>CUSTOM INTERVAL</Text>
               <Text style={modalStyles.headerTitle}>Select Date Range</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn}>
-              <Ionicons name="close" size={18} color={Colors.textSecondary} />
+              <Ionicons name="close" size={17} color={R.textSecondary} />
             </TouchableOpacity>
           </View>
 
           <View style={modalStyles.selectorRow}>
-            <TouchableOpacity
-              onPress={() => setSelecting('start')}
-              style={[
-                modalStyles.selectorTab,
-                selecting === 'start' && modalStyles.selectorTabActive,
-              ]}
-            >
-              <Feather
-                name="calendar"
-                size={12}
-                color={selecting === 'start' ? Colors.gold : Colors.textMuted}
-              />
-              <View>
-                <Text style={modalStyles.selectorTabLabel}>FROM</Text>
-                <Text
-                  style={[
-                    modalStyles.selectorTabDate,
-                    selecting === 'start' && { color: Colors.gold },
-                  ]}
-                >
-                  {tempStart ? fmtDisplay(new Date(tempStart)) : 'Select start'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <View style={modalStyles.selectorArrow}>
-              <Feather name="arrow-right" size={14} color={Colors.textMuted} />
-            </View>
-            <TouchableOpacity
-              onPress={() => setSelecting('end')}
-              style={[
-                modalStyles.selectorTab,
-                selecting === 'end' && modalStyles.selectorTabActive,
-              ]}
-            >
-              <Feather
-                name="calendar"
-                size={12}
-                color={selecting === 'end' ? Colors.gold : Colors.textMuted}
-              />
-              <View>
-                <Text style={modalStyles.selectorTabLabel}>TO</Text>
-                <Text
-                  style={[
-                    modalStyles.selectorTabDate,
-                    selecting === 'end' && { color: Colors.gold },
-                  ]}
-                >
-                  {tempEnd ? fmtDisplay(new Date(tempEnd)) : 'Select end'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+            {(['start', 'end'] as const).map(type => (
+              <TouchableOpacity
+                key={type}
+                onPress={() => {
+                  setSelecting(type);
+                  setShowPicker(false);
+                }}
+                style={[
+                  modalStyles.selectorTab,
+                  selecting === type && !showPicker && modalStyles.selectorTabActive,
+                ]}
+              >
+                <Feather
+                  name="calendar"
+                  size={12}
+                  color={selecting === type && !showPicker ? R.gold : R.textTertiary}
+                />
+                <View>
+                  <Text style={modalStyles.selectorTabLabel}>
+                    {type === 'start' ? 'FROM' : 'TO'}
+                  </Text>
+                  <Text
+                    style={[
+                      modalStyles.selectorTabDate,
+                      selecting === type && !showPicker && { color: R.gold },
+                    ]}
+                  >
+                    {type === 'start'
+                      ? tempStart ? fmtDisplay(new Date(tempStart)) : 'Select start'
+                      : tempEnd ? fmtDisplay(new Date(tempEnd)) : 'Select end'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <Text style={modalStyles.selectingHint}>
-            {selecting === 'start'
-              ? '⬤  Tap a start date'
-              : '⬤  Now tap an end date'}
+            {showPicker 
+              ? '⬤  Select month and year'
+              : selecting === 'start'
+                ? '⬤  Tap a start date'
+                : '⬤  Now tap an end date'}
           </Text>
 
-          <Calendar
-            theme={calendarTheme}
-            markingType="period"
-            markedDates={buildMarked()}
-            onDayPress={handleDayPress}
-            maxDate={fmt(today)}
-            enableSwipeMonths
-            style={modalStyles.calendar}
-          />
+          <View style={modalStyles.calendarContainer}>
+            <Calendar
+              key={currentDate}
+              current={currentDate}
+              theme={calendarTheme}
+              markingType="period"
+              markedDates={buildMarked()}
+              onDayPress={handleDayPress}
+              maxDate={fmt(today)}
+              enableSwipeMonths
+              style={modalStyles.calendar}
+              renderHeader={(date) => (
+                <TouchableOpacity 
+                  onPress={() => setShowPicker(!showPicker)} 
+                  style={[modalStyles.customHeaderTouch, showPicker && { borderColor: R.gold }]}
+                >
+                  <Text style={modalStyles.customHeaderTxt}>
+                    {date.toString('MMMM')} {date.getFullYear()}
+                  </Text>
+                  <MaterialCommunityIcons 
+                    name={showPicker ? "chevron-up" : "menu-down"} 
+                    size={18} 
+                    color={R.gold} 
+                  />
+                </TouchableOpacity>
+              )}
+            />
+
+            {/* ─── SCROLLABLE YEAR & MONTH OVERLAY PICKER ─── */}
+            {showPicker && (
+              <View style={modalStyles.pickerOverlay}>
+                {/* Year Horizontal Scroller */}
+                <View style={modalStyles.yearStrip}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10 }}>
+                    {years.map(yr => (
+                      <TouchableOpacity
+                        key={yr}
+                        onPress={() => handleMonthYearSelect(yr, selectedMonth)}
+                        style={[modalStyles.yearPill, selectedYear === yr && modalStyles.yearPillActive]}
+                      >
+                        <Text style={[modalStyles.yearPillText, selectedYear === yr && modalStyles.yearPillTextActive]}>
+                          {yr}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                {/* Month Grid Scroller */}
+                <ScrollView contentContainerStyle={modalStyles.monthGrid}>
+                  {months.map(m => (
+                    <TouchableOpacity
+                      key={m.val}
+                      onPress={() => handleMonthYearSelect(selectedYear, m.val)}
+                      style={[
+                        modalStyles.monthCell, 
+                        selectedMonth === m.val && modalStyles.monthCellActive
+                      ]}
+                    >
+                      <Text style={[modalStyles.monthCellText, selectedMonth === m.val && modalStyles.monthCellTextActive]}>
+                        {m.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
 
           <TouchableOpacity
             style={[
@@ -1252,7 +1344,7 @@ const DateRangeModal: React.FC<{
             disabled={!tempStart || !tempEnd}
             activeOpacity={0.85}
           >
-            <Feather name="check" size={15} color={Colors.textInverse} />
+            <Feather name="check" size={15} color={R.textInverse} />
             <Text style={modalStyles.confirmBtnText}>APPLY RANGE</Text>
           </TouchableOpacity>
         </View>
@@ -1264,11 +1356,11 @@ const DateRangeModal: React.FC<{
 const modalStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(0,0,0,0.78)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: Colors.bgCard,
+    backgroundColor: R.bgSurface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 36,
@@ -1277,7 +1369,7 @@ const modalStyles = StyleSheet.create({
     width: 36,
     height: 3,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: R.border,
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 4,
@@ -1293,89 +1385,182 @@ const modalStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.2,
-    color: Colors.gold,
+    color: R.gold,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '300',
-    color: Colors.textPrimary,
-    marginTop: 2,
+    color: R.textPrimary,
+    marginTop: 3,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.bgElevated,
+    backgroundColor: R.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: R.border,
   },
   selectorRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 8,
-    gap: 8,
+    gap: 10,
   },
   selectorTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Colors.bgElevated,
-    borderRadius: Radius.md,
+    backgroundColor: R.bgElevated,
+    borderRadius: 12,
     padding: 12,
     borderWidth: 0.5,
-    borderColor: Colors.border,
+    borderColor: R.border,
   },
   selectorTabActive: {
-    borderColor: Colors.goldBorder,
-    backgroundColor: Colors.goldMuted,
+    borderColor: R.goldBorder,
+    backgroundColor: R.goldMuted,
   },
   selectorTabLabel: {
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: Colors.textMuted,
+    color: R.textTertiary,
   },
   selectorTabDate: {
     fontSize: 12,
     fontWeight: '500',
-    color: Colors.textPrimary,
+    color: R.textPrimary,
     marginTop: 2,
   },
-  selectorArrow: { padding: 4 },
   selectingHint: {
     fontSize: 10,
-    color: Colors.gold,
+    color: R.gold,
     fontWeight: '600',
     letterSpacing: 0.5,
     marginHorizontal: 20,
     marginBottom: 8,
   },
-  calendar: { borderRadius: Radius.lg, marginHorizontal: 12 },
+  calendar: { borderRadius: 12, marginHorizontal: 12 },
   confirmBtn: {
     marginHorizontal: 20,
     marginTop: 16,
-    height: 52,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.gold,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: R.gold,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  confirmBtnDisabled: { opacity: 0.4 },
+  confirmBtnDisabled: { opacity: 0.35 },
   confirmBtnText: {
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
-    color: Colors.textInverse,
+    color: R.textInverse,
+  },
+  customHeaderTouch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: R.bgElevated,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: R.border,
+  },
+  customHeaderTxt: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: R.textPrimary,
+    marginRight: 2,
+  },
+  calendarContainer: {
+    position: 'relative',
+    marginHorizontal: 12,
+    minHeight: 330,
+  },
+  pickerOverlay: {
+    position: 'absolute',
+    top: 50, // aligns perfectly below calendar header
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: R.bgSurface,
+    zIndex: 10,
+    paddingTop: 10,
+  },
+  yearStrip: {
+    height: 46,
+    borderBottomWidth: 0.5,
+    borderBottomColor: R.border,
+    paddingBottom: 10,
+  },
+  yearPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: R.bgElevated,
+    marginRight: 8,
+    borderWidth: 0.5,
+    borderColor: R.border,
+    justifyContent: 'center',
+  },
+  yearPillActive: {
+    backgroundColor: R.goldMuted,
+    borderColor: R.gold,
+  },
+  yearPillText: {
+    color: R.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  yearPillTextActive: {
+    color: R.gold,
+    fontWeight: '700',
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 10,
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  monthCell: {
+    width: '31%',
+    height: 48,
+    backgroundColor: R.bgElevated,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: R.border,
+    marginBottom: 4,
+  },
+  monthCellActive: {
+    backgroundColor: R.gold,
+    borderColor: R.gold,
+  },
+  monthCellText: {
+    color: R.textPrimary,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  monthCellTextActive: {
+    color: R.textInverse,
+    fontWeight: '700',
   },
 });
 
-// ─── FilterScreen ─────────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// FilterScreen — main
+// ═══════════════════════════════════════════════════════════════════════════════
 const FilterScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
   const [filter, setFilter] = useState<FilterState>({
     range: 'THIS_MONTH',
     startDate: oneMonthAgo,
@@ -1393,94 +1578,35 @@ const FilterScreen: React.FC = () => {
   const [insights, setInsights] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [calVisible, setCalVisible] = useState(false);
+  const [modulesExpanded, setModulesExpanded] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const btnScale = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(1)).current;
-
-const handleExportExcel = async () => {
-  try {
-
-    const data = await downloadExcel(
-      filter.startDate,
-      filter.endDate,
-    );
-
-    const start = filter.startDate
-      .toISOString()
-      .split('T')[0];
-
-    const end = filter.endDate
-      .toISOString()
-      .split('T')[0];
-
-    const filePath =
-      `${RNFS.DownloadDirectoryPath}/TranSactly_${start}_${end}.xlsx`;
-
-    const base64 =
-      Buffer.from(data).toString('base64');
-
-    await RNFS.writeFile(
-      filePath,
-      base64,
-      'base64',
-    );
-
-    Alert.alert(
-      'Success',
-      'Excel exported successfully',
-    );
-
-    await FileViewer.open(
-      filePath,
-    );
-
-  } catch (error) {
-
-    console.error(
-      'EXPORT ERROR',
-      error,
-    );
-
-    Alert.alert(
-      'Export Failed',
-      'Unable to export Excel file',
-    );
-  }
-};
-
-  // idle CTA glow
-  useEffect(() => {
-    if (loading) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1.15,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [loading]);
+  const calendarRef = useRef<any>(null);
+  const [currentDate, setCurrentDate] = useState(fmt(new Date()));
+  const handleExportExcel = async () => {
+    try {
+      const data = await downloadExcel(filter.startDate, filter.endDate);
+      const start = filter.startDate.toISOString().split('T')[0];
+      const end = filter.endDate.toISOString().split('T')[0];
+      const filePath = `${RNFS.DocumentDirectoryPath}/centfluence_${start}_${end}.xlsx`;
+      const base64 = Buffer.from(data).toString('base64');
+      await RNFS.writeFile(filePath, base64, 'base64');
+      Alert.alert('Success', 'Excel exported successfully');
+      await FileViewer.open(filePath);
+    } catch (error) {
+      console.error('EXPORT ERROR', error);
+      Alert.alert('Export Failed', 'Unable to export Excel file');
+    }
+  };
 
   const handleRangeSelect = (range: QuickRange) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const end = new Date();
     const start = new Date();
-    if (range === 'THIS_MONTH') {
-      start.setMonth(end.getMonth() - 1);
-    } else if (range === 'SIX_MONTHS') {
-      start.setMonth(end.getMonth() - 6);
-    } else if (range === 'THIS_YEAR') {
-      start.setFullYear(end.getFullYear() - 1);
-    }
+    if (range === 'THIS_MONTH') start.setMonth(end.getMonth() - 1);
+    else if (range === 'SIX_MONTHS') start.setMonth(end.getMonth() - 6);
+    else if (range === 'THIS_YEAR') start.setFullYear(end.getFullYear() - 1);
     setFilter(prev => ({ ...prev, range, startDate: start, endDate: end }));
     setInsights(null);
   };
@@ -1518,59 +1644,20 @@ const handleExportExcel = async () => {
     }
 
     await parseSMSIntoTransactions(filter.startDate, filter.endDate);
-    console.log('STEP 1');
     try {
-      console.log('STEP 2');
-      console.log('INSIGHTS REQUEST', filter.startDate, filter.endDate);
-      console.log('START DATE', filter.startDate);
-      console.log('END DATE', filter.endDate);
-      console.log(
-  'START TYPE',
-  typeof filter.startDate,
-);
-
-console.log(
-  'END TYPE',
-  typeof filter.endDate,
-);
-
-console.log(
-  'IS DATE START',
-  filter.startDate instanceof Date,
-);
-
-console.log(
-  'IS DATE END',
-  filter.endDate instanceof Date,
-);
       const insightsResponse = await fetchInsights(
         filter.startDate,
         filter.endDate,
       );
-      console.log('STEP 3', insightsResponse);
       const transactionsResponse = await fetchTransactions(
         filter.startDate,
         filter.endDate,
       );
-      console.log('STEP 4', transactionsResponse);
       setInsights(insightsResponse);
-      console.log('STEP 5');
       setTransactions(transactionsResponse.transactions ?? []);
-      console.log('STEP 6');
-    }catch (err: any) {
-
-  console.log(
-    'ERROR RESPONSE',
-    err?.response?.data,
-  );
-
-  console.log(
-    'ERROR STATUS',
-    err?.response?.status,
-  );
-
-  console.error(err);
-}finally {
+    } catch (err: any) {
+      console.error(err);
+    } finally {
       setLoading(false);
     }
   };
@@ -1586,18 +1673,25 @@ console.log(
     setModulesEnabled(Object.fromEntries(SCAN_MODULES.map(m => [m.id, true])));
     setInsights(null);
   };
-  if (insights) {
-    console.log('INSIGHTS DATA', JSON.stringify(insights, null, 2));
-  }
-  console.log('TRANSACTIONS STATE', JSON.stringify(transactions, null, 2));
+
+  const enabledCount = Object.values(modulesEnabled).filter(Boolean).length;
+
+  const RANGE_LABELS: Record<QuickRange, string> = {
+    THIS_MONTH: 'This Month',
+    SIX_MONTHS: '6 Months',
+    THIS_YEAR: 'This Year',
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+      <StatusBar barStyle="light-content" backgroundColor={R.bg} />
 
       <DateRangeModal
         visible={calVisible}
         startDate={filter.startDate}
         endDate={filter.endDate}
+        currentDate={currentDate}
+        setCurrentDate={setCurrentDate}
         onConfirm={(s, e) => {
           setFilter(prev => ({
             ...prev,
@@ -1618,25 +1712,22 @@ console.log(
         <View style={styles.topBar}>
           <View style={styles.topLeft}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>AX</Text>
+              <MaterialCommunityIcons
+                name="shimmer"
+                size={16}
+                color={R.textInverse}
+              />
             </View>
             <View>
-              <Text style={styles.brandName}>SmartSpend AI</Text>
+              <Text style={styles.brandName}>centfluence</Text>
               <Text style={styles.brandTagline}>SMS INTELLIGENCE ENGINE</Text>
             </View>
           </View>
           <View style={styles.topRight}>
             <View style={styles.secBadge}>
-              <View style={styles.secDot} />
+              <Animated.View style={[styles.secDot]} />
               <Text style={styles.secLabel}>SECURED</Text>
             </View>
-            {/* <TouchableOpacity style={styles.bellBtn}>
-              <Ionicons
-                name="notifications-outline"
-                size={17}
-                color={Colors.gold}
-              />
-            </TouchableOpacity> */}
           </View>
         </View>
 
@@ -1657,19 +1748,13 @@ console.log(
         {/* ── Quick Range ── */}
         <View style={styles.card}>
           <View style={styles.cardLabelRow}>
-            <Feather name="clock" size={11} color={Colors.textMuted} />
+            <Feather name="clock" size={11} color={R.textTertiary} />
             <Text style={styles.cardLabel}>QUICK RANGE</Text>
           </View>
           <View style={styles.rangeGrid}>
             {QUICK_RANGES.map(r => (
               <TouchableOpacity
-                key={
-                  r === 'THIS_MONTH'
-                    ? 'This Month'
-                    : r === 'SIX_MONTHS'
-                    ? '6 Months'
-                    : 'This Year'
-                }
+                key={r}
                 onPress={() => handleRangeSelect(r)}
                 style={[
                   styles.rangeBtn,
@@ -1683,11 +1768,7 @@ console.log(
                     filter.range === r && styles.rangeBtnTextActive,
                   ]}
                 >
-                  {r === 'THIS_MONTH'
-                    ? 'This Month'
-                    : r === 'SIX_MONTHS'
-                    ? '6 Months'
-                    : 'This Year'}
+                  {RANGE_LABELS[r]}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -1718,8 +1799,8 @@ console.log(
                 size={15}
                 color={
                   (filter.range as string) === 'CUSTOM'
-                    ? Colors.gold
-                    : Colors.textSecondary
+                    ? R.gold
+                    : R.textSecondary
                 }
               />
             </View>
@@ -1736,15 +1817,38 @@ console.log(
               )}
             </View>
           </View>
-          <Feather name="chevron-right" size={15} color={Colors.textMuted} />
+          <Feather name="chevron-right" size={15} color={R.textTertiary} />
         </TouchableOpacity>
 
-        {/* ── Scan Configuration modules ── */}
-
-        {/* ── AI Filter Mode (original toggle, preserved) ── */}
+        {/* ── Scan Modules (collapsible) ── */}
+        {/* <View style={styles.card}>
+          <TouchableOpacity
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setModulesExpanded(v => !v);
+            }}
+            style={styles.modulesHeader}
+            activeOpacity={0.8}
+          >
+            <Feather name="sliders" size={11} color={R.textTertiary} />
+            <Text style={[styles.cardLabel, { flex: 1 }]}>SCAN MODULES</Text>
+            <View style={styles.moduleCountPill}>
+              <Text style={styles.moduleCountText}>{enabledCount}/{SCAN_MODULES.length} ON</Text>
+            </View>
+            <Feather name={modulesExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={R.textTertiary} style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
+          {modulesExpanded && SCAN_MODULES.map((m, i) => (
+            <ScanModuleRow
+              key={m.id}
+              module={m}
+              enabled={!!modulesEnabled[m.id]}
+              onToggle={() => setModulesEnabled(prev => ({ ...prev, [m.id]: !prev[m.id] }))}
+              isLast={i === SCAN_MODULES.length - 1}
+            />
+          ))}
+        </View> */}
 
         {/* ── AI Prediction preview ── */}
-
         {/* ── Privacy & Security ── */}
         <PrivacyShieldCard />
 
@@ -1761,16 +1865,50 @@ console.log(
         {insights && (
           <>
             <InsightsDashboard data={insights} />
-            <View style={inStyles.card}>
-              <Text style={inStyles.cardLabel}>RECENT TRANSACTIONS</Text>
 
-              {(transactions ?? []).slice(0, 10).map(tx => (
-                <View key={tx.id} style={inStyles.merchantRow}>
+            {/* Recent Transactions */}
+            <View style={inStyles.card}>
+              <View style={inStyles.cardHeaderRow}>
+                <MaterialCommunityIcons
+                  name="receipt"
+                  size={12}
+                  color={R.textTertiary}
+                />
+                <Text style={inStyles.cardLabel}>REcent TRANSACTIONS</Text>
+                <Text style={styles.txCountPill}>
+                  {(transactions ?? []).length} total
+                </Text>
+              </View>
+              {(transactions ?? []).slice(0, 10).map((tx, i) => (
+                <View
+                  key={tx.id ?? i}
+                  style={[
+                    inStyles.merchantRow,
+                    i < Math.min(transactions.length, 10) - 1 &&
+                      inStyles.merchantDivider,
+                  ]}
+                >
+                  <View style={styles.txIconWrap}>
+                    <MaterialCommunityIcons
+                      name="swap-horizontal"
+                      size={12}
+                      color={R.textTertiary}
+                    />
+                  </View>
                   <Text style={inStyles.merchantName}>{tx.merchant}</Text>
-                  <Text style={inStyles.merchantAmt}>₹{tx.amount}</Text>
+                  <Text
+                    style={[
+                      inStyles.merchantAmt,
+                      { color: tx.type === 'credit' ? R.green : R.textPrimary },
+                    ]}
+                  >
+                    ₹{tx.amount}
+                  </Text>
                 </View>
               ))}
             </View>
+
+            {/* Export & AI buttons */}
             <TouchableOpacity
               style={styles.exportBtn}
               activeOpacity={0.85}
@@ -1778,22 +1916,31 @@ console.log(
             >
               <MaterialCommunityIcons
                 name="file-excel-outline"
-                size={18}
+                size={17}
                 color="#fff"
               />
-
               <Text style={styles.exportBtnText}>EXPORT TO EXCEL</Text>
+            </TouchableOpacity>
+            <Text style={styles.websiteSubtext}>
+              Detailed AI insights and advanced analytics
+            </Text>
+            <TouchableOpacity
+              style={styles.websiteButton}
+              onPress={handleVisitWebsite}
+            >
+              <MaterialCommunityIcons name="web" size={20} color="#D4AF37" />
+              <Text style={styles.websiteButtonText}>Advanced Analytics</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.aiAssistantBtn}
               activeOpacity={0.85}
+              onPress={() => navigation.navigate('Chat')}
             >
               <MaterialCommunityIcons
                 name="robot-outline"
-                size={18}
-                color={Colors.textInverse}
+                size={17}
+                color={R.textInverse}
               />
-
               <Text style={styles.aiAssistantText}>
                 ASK AI ABOUT YOUR SPENDING
               </Text>
@@ -1801,7 +1948,7 @@ console.log(
           </>
         )}
 
-        {/* ── CTA button ── */}
+        {/* ── CTA ── */}
         <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <TouchableOpacity
             style={[styles.fetchBtn, loading && styles.fetchBtnLoading]}
@@ -1811,8 +1958,8 @@ console.log(
           >
             {loading ? (
               <View style={styles.fetchBtnInner}>
-                <ActivityIndicator color={Colors.gold} size="small" />
-                <Text style={[styles.fetchBtnText, { color: Colors.gold }]}>
+                <ActivityIndicator color={R.gold} size="small" />
+                <Text style={[styles.fetchBtnText, { color: R.gold }]}>
                   ANALYSING…
                 </Text>
               </View>
@@ -1821,7 +1968,7 @@ console.log(
                 <MaterialCommunityIcons
                   name="brain"
                   size={18}
-                  color={Colors.textInverse}
+                  color={R.textInverse}
                 />
                 <Text style={styles.fetchBtnText}>RUN AI ANALYSIS</Text>
               </View>
@@ -1834,6 +1981,7 @@ console.log(
           activeOpacity={0.7}
           style={styles.clearBtn}
         >
+          <Feather name="refresh-ccw" size={11} color={R.textTertiary} />
           <Text style={styles.clearText}>RESET ALL FILTERS</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -1841,137 +1989,107 @@ console.log(
   );
 };
 
-// ─── Main styles ──────────────────────────────────────────────────────────────
-
+// ─── Main styles ───────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { paddingHorizontal: Space.xl, paddingBottom: Space.xxxl },
+  safe: { flex: 1, backgroundColor: R.bg },
+  scroll: { paddingHorizontal: 18, paddingBottom: 48 },
 
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Space.lg,
+    paddingVertical: 16,
   },
-  topLeft: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
-  topRight: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
+  topLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.gold,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: R.gold,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 12, fontWeight: '800', color: Colors.textInverse },
-  brandName: {
-    ...Font.labelL,
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  brandName: { fontSize: 14, fontWeight: '700', color: R.textPrimary },
   brandTagline: {
     fontSize: 8,
     fontWeight: '700',
     letterSpacing: 1,
-    color: Colors.textMuted,
+    color: R.textTertiary,
     marginTop: 1,
   },
   secBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
-    backgroundColor: 'rgba(61,203,127,0.08)',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16,185,129,0.08)',
     borderWidth: 0.5,
-    borderColor: 'rgba(61,203,127,0.25)',
+    borderColor: 'rgba(16,185,129,0.22)',
   },
-  secDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#3DCB7F' },
+  secDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: R.green },
   secLabel: {
     fontSize: 8,
     fontWeight: '700',
-    color: '#3DCB7F',
+    color: R.green,
     letterSpacing: 0.8,
   },
-  bellBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.bgCard,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
-  titleBlock: { marginBottom: Space.xl, gap: Space.sm },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md },
-  titleSub: { ...Font.labelS, color: Colors.gold, letterSpacing: 1.2 },
+  titleBlock: { marginBottom: 20, gap: 8 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titleSub: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    color: R.gold,
+  },
   title: {
-    ...Font.displayXL,
-    color: Colors.textPrimary,
     fontSize: 26,
     fontWeight: '300',
+    color: R.textPrimary,
+    letterSpacing: -0.3,
+    marginTop: 2,
   },
-  titleDesc: { ...Font.bodyS, color: Colors.textSecondary },
+  titleDesc: { fontSize: 12, color: R.textSecondary, lineHeight: 18 },
 
   card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
+    backgroundColor: R.bgSurface,
+    borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: Colors.border,
-    padding: Space.xl,
-    marginBottom: Space.md,
-    gap: Space.md,
+    borderColor: R.border,
+    padding: 16,
+    marginBottom: 12,
+    gap: 12,
   },
   cardLabel: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: Colors.textMuted,
+    color: R.textTertiary,
   },
   cardLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
-  moduleCountPill: {
-    marginLeft: 'auto',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.goldMuted,
-    borderWidth: 0.5,
-    borderColor: Colors.goldBorder,
-  },
-  moduleCountText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: Colors.gold,
-    letterSpacing: 0.6,
-  },
-
-  rangeGrid: { flexDirection: 'row', gap: Space.sm },
+  rangeGrid: { flexDirection: 'row', gap: 8 },
   rangeBtn: {
     flex: 1,
     height: 44,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.bgElevated,
+    borderRadius: 12,
+    backgroundColor: R.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: Colors.border,
+    borderColor: R.border,
   },
-  rangeBtnActive: {
-    backgroundColor: Colors.goldMuted,
-    borderColor: Colors.gold,
-  },
+  rangeBtnActive: { backgroundColor: R.goldMuted, borderColor: R.gold },
   rangeBtnText: {
-    ...Font.labelL,
-    color: Colors.textSecondary,
     fontSize: 11,
-    letterSpacing: 0.5,
+    fontWeight: '500',
+    color: R.textTertiary,
+    letterSpacing: 0.3,
   },
-  rangeBtnTextActive: { color: Colors.gold, fontWeight: '700' },
+  rangeBtnTextActive: { color: R.gold, fontWeight: '700' },
 
   calendarTrigger: {
     flexDirection: 'row',
@@ -1979,169 +2097,165 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 0,
   },
-  calendarTriggerActive: { borderColor: Colors.goldBorder },
+  calendarTriggerActive: { borderColor: R.goldBorder },
   calendarTriggerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Space.md,
+    gap: 12,
     flex: 1,
   },
   calendarIconBox: {
     width: 38,
     height: 38,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.bgElevated,
+    borderRadius: 12,
+    backgroundColor: R.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: Colors.border,
+    borderColor: R.border,
   },
   calendarIconBoxActive: {
-    backgroundColor: Colors.goldMuted,
-    borderColor: Colors.goldBorder,
+    backgroundColor: R.goldMuted,
+    borderColor: R.goldBorder,
   },
   calendarRangeText: {
     fontSize: 12,
     fontWeight: '500',
-    color: Colors.gold,
+    color: R.gold,
     marginTop: 3,
   },
-  calendarPlaceholder: { fontSize: 11, color: Colors.textMuted, marginTop: 3 },
+  calendarPlaceholder: { fontSize: 11, color: R.textTertiary, marginTop: 3 },
 
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Space.md,
+  modulesHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  moduleCountPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    backgroundColor: R.goldMuted,
+    borderWidth: 0.5,
+    borderColor: R.goldBorder,
   },
-  toggleLabel: { ...Font.bodyM, color: Colors.textPrimary, fontWeight: '500' },
-  toggleSub: {
-    ...Font.labelS,
-    color: Colors.textMuted,
-    fontSize: 10,
-    marginTop: 2,
+  moduleCountText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: R.gold,
+    letterSpacing: 0.6,
   },
 
   fetchBtn: {
     height: 58,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.gold,
+    borderRadius: 29,
+    backgroundColor: R.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Space.lg,
-    shadowColor: Colors.gold,
+    marginBottom: 12,
+    shadowColor: R.gold,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 7,
   },
   fetchBtnLoading: {
-    backgroundColor: Colors.bgCard,
+    backgroundColor: R.bgSurface,
     borderWidth: 0.5,
-    borderColor: Colors.goldBorder,
+    borderColor: R.goldBorder,
     shadowOpacity: 0,
   },
-  fetchBtnInner: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
+  fetchBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   fetchBtnText: {
-    ...Font.labelM,
     fontSize: 13,
     letterSpacing: 2.5,
-    color: Colors.textInverse,
+    color: R.textInverse,
     fontWeight: '800',
   },
 
-  clearBtn: { alignItems: 'center', paddingVertical: Space.sm },
+  clearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+  },
   clearText: {
-    ...Font.labelM,
-    color: Colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '600',
+    color: R.textTertiary,
     letterSpacing: 1.2,
   },
-  emptyState: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    paddingVertical: Space.xxxl,
-    paddingHorizontal: Space.xl,
-    alignItems: 'center',
-    marginBottom: Space.lg,
-  },
 
-  emptyTitle: {
-    color: Colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: Space.sm,
-  },
-
-  emptyText: {
-    color: Colors.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  aiAssistantBtn: {
-    height: 54,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.gold,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Space.sm,
-    marginBottom: Space.lg,
-  },
-
-  aiAssistantText: {
-    color: Colors.textInverse,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  emptyInsightsCard: {
-    backgroundColor: '#111',
-    borderRadius: 24,
-    padding: 24,
-    marginTop: 20,
-  },
-
-  emptyInsightsTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-
-  emptyInsightsText: {
-    color: '#888',
-    marginTop: 8,
-    lineHeight: 22,
-  },
   exportBtn: {
     height: 54,
-
-    borderRadius: Radius.full,
-
-    backgroundColor: '#217346',
-
+    borderRadius: 27,
+    backgroundColor: '#1A6B40',
+    borderWidth: 0.5,
+    borderColor: '#2A9A5C',
     flexDirection: 'row',
-
     alignItems: 'center',
-
     justifyContent: 'center',
-
-    gap: Space.sm,
-
-    marginBottom: Space.md,
+    gap: 8,
+    marginBottom: 10,
   },
-
   exportBtnText: {
-    color: '#FFF',
-
+    color: '#ECFDF5',
     fontSize: 12,
-
-    fontWeight: '800',
-
+    fontWeight: '700',
     letterSpacing: 1.5,
   },
+
+  aiAssistantBtn: {
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: R.gold,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  aiAssistantText: {
+    color: R.textInverse,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+
+  txCountPill: { fontSize: 9, color: R.textTertiary, fontWeight: '600' },
+  txIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: R.bgElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  websiteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#141A23',
+    borderWidth: 1,
+    borderColor: '#D4AF3730',
+  },
+
+  websiteButtonText: {
+    color: '#D4AF37',
+    fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 10,
+  },
+
+  websiteSubtext: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  
 });
 
 export default FilterScreen;

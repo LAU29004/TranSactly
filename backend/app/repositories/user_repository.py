@@ -16,6 +16,16 @@ def get_user_by_google_id(
         .first()
     )
 
+def get_user_by_email(
+    db: Session,
+    email: str,
+):
+    return (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
 
 def get_user_by_id(
     db: Session,

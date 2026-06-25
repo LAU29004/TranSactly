@@ -1,0 +1,174 @@
+/* ── SECTION ── */
+.testimonialsSection {
+  background: var(--amber);
+  position: relative;
+  overflow: hidden;
+  padding: 96px 24px 120px;
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tDotField {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(circle, rgba(26,16,51,0.22) 1.3px, transparent 1.3px);
+  background-size: 20px 20px;
+}
+
+.testimonialsInner {
+  position: relative; z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── HEADER ── */
+.tHeader {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.tBadge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--navy);
+  color: var(--amber3);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 7px 14px 7px 10px;
+  border-radius: 4px;
+  margin-bottom: 28px;
+}
+
+.tBadgePip {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--amber3);
+  animation: tblink 2s ease-in-out infinite;
+}
+
+@keyframes tblink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.tHeading {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(32px, 4vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: rgba(255,255,255,0.68);
+  margin-bottom: 16px;
+}
+
+.tHeadingAccent {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.tHeadingAccent::after {
+  content: '';
+  position: absolute; left: 0; bottom: 0;
+  width: 70%; height: 4px;
+  background: var(--ink);
+  border-radius: 3px;
+}
+
+.tSub {
+  font-size: 15px; font-weight: 300; line-height: 1.7;
+  color: rgba(255,255,255,0.62);
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* ── GRID ── */
+.tGrid {
+  columns: 1;
+  gap: 20px;
+}
+
+@media (min-width: 640px)  { .tGrid { columns: 2; } }
+@media (min-width: 1024px) { .tGrid { columns: 4; } }
+
+/* ── CARD ── */
+.tCard {
+  break-inside: avoid;
+  margin-bottom: 20px;
+  background: var(--navy);
+  border: 2px solid rgba(245,168,0,0.18);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.tCard:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+.tQuoteMark {
+  font-family: 'Syne', sans-serif;
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.tQuoteTitle {
+  color: var(--amber);
+  font-size: 13px; font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.tBody {
+  color: rgba(255,252,240,0.62);
+  font-size: 12px; line-height: 1.75;
+  font-weight: 300;
+  margin-bottom: 18px;
+}
+
+/* Stars */
+.tStars {
+  display: flex; gap: 3px;
+  margin-bottom: 16px;
+}
+
+.tStar {
+  width: 12px; height: 12px;
+  fill: var(--amber3);
+}
+
+/* Author row */
+.tAuthor {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 14px;
+  border-top: 1.5px solid rgba(245,168,0,0.14);
+}
+
+.tAvatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800;
+  color: var(--navy);
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.12);
+}
+
+.tName {
+  font-size: 12px; font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.01em;
+}
+
+.tRole {
+  font-size: 10px; font-weight: 400;
+  color: rgba(245,168,0,0.55);
+  margin-top: 2px;
+  letter-spacing: 0.03em;
+}
+
+.tSectionRule {
+  width: 72px; height: 5px;
+  background: var(--ink);
+  border-radius: 3px;
+  margin: 0 auto 56px;
+}

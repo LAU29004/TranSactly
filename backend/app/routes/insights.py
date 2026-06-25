@@ -10,6 +10,8 @@ from app.services.auth.dependencies import (
 from app.services.analytics.insights_service import (
     get_dashboard_insights,
 )
+from fastapi import Request
+from app.middleware.rate_limiter import limiter
 
 router = APIRouter(
     prefix="/api/v1",
@@ -18,8 +20,9 @@ router = APIRouter(
 
 
 @router.get("/insights")
+@limiter.limit("60/minute")
 def get_insights(
-
+    request:Request,
     current_user: User = Depends(
         get_current_user
     ),

@@ -1,13 +1,12 @@
 import axios from 'axios';
-
+import { API_BASE_URL } from "../../config/config";
 import {
   getToken,
 } from '../auth/authStorage';
 
 export const apiClient = axios.create({
 
-  baseURL:
-    'http://127.0.0.1:8000',
+baseURL: API_BASE_URL,
 
   timeout: 10000,
 
