@@ -90,7 +90,12 @@ app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://centfluence-frontend.vercel.app",
+        "https://centfluence-frontend.vercel.app/"  # Adding trailing slash version just in case
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
