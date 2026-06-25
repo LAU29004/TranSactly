@@ -19,8 +19,7 @@ export default function LoginPage() {
   const handleGoogleSuccess = async (credentialResponse: any) => {
     console.log("GOOGLE RESPONSE:", credentialResponse);
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/google/`,
+const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google`,
         {
           id_token: credentialResponse.credential,
         },
