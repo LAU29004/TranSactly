@@ -1,5 +1,5 @@
 'use client'
-import styles from './testimonials.module.css'
+import styles from './test.module.css'
 
 const testimonials = [
   {
