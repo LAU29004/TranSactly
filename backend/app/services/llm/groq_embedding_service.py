@@ -1,37 +1,41 @@
 import logging
-import math
 from groq import Groq
+from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Initializes the Groq client (reads GROQ_API_KEY from environment automatically)
+# Initialize Groq client (reads GROQ_API_KEY from environment)
 client = Groq()
 
-def get_groq_embedding(text: str) -> list[float]:
+def classify_text_via_groq(text: str, contextual_options: list) -> str:
     """
-    Fetches text embedding vectors from Groq Cloud API using nomic-embed-text-v1.5.
+    Uses Llama 3.3 to directly match text to a specific category option.
+    Replaces mathematical embedding similarity checks.
     """
     try:
-        if not text or text.strip() == "":
-            text = "unknown"
-
-        response = client.embeddings.create(
-            model="nomic-embed-text-v1.5",
-            input=text,
-        )
-        return response.data[0].embedding
-    except Exception as e:
-        logger.error(f"Failed to fetch Groq embedding: {e}")
-        raise e
-
-def cosine_similarity(v1: list[float], v2: list[float]) -> float:
-    if not v1 or not v2:
-        return 0.0
+        options_str = ", ".join(contextual_options)
         
-    dot_product = sum(a * b for a, b in zip(v1, v2))
-    magnitude1 = math.sqrt(sum(a * a for a in v1))
-    magnitude2 = math.sqrt(sum(b * b for b in v2))
-    
-    if not magnitude1 or not magnitude2:
-        return 0.0
-    return dot_product / (magnitude1 * magnitude2)
+        prompt = (
+            f"Analyze the following financial transaction detail: '{text}'.\n"
+            f"Select the most appropriate category from this exact list: [{options_str}].\n"
+            f"Respond with ONLY the exact category name from the list. Do not include explanation, thinking, or markdown."
+        )
+
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,  # Forces deterministic matching
+            max_tokens=15
+        )
+        
+        result = completion.choices[0].message.content.strip()
+        
+        # Validate that the model returned an allowed option
+        for option in contextual_options:
+            if result.lower() == option.lower():
+                return option
+                
+        return "Others"
+    except Exception as e:
+        logger.error(f"Groq classification failure: {e}")
+        return "Others"

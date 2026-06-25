@@ -5,9 +5,7 @@ from app.repositories.merchant_repository import get_merchant_category, save_mer
 from app.services.intelligence.merchant_priors import MERCHANT_PRIORS
 from app.services.llm.groq_llm_service import classify_merchant
 from app.services.intelligence.merchant_intelligence import MERCHANT_INTELLIGENCE
-
-# Clean API Integration
-from app.services.llm.groq_embedding_service import get_groq_embedding, cosine_similarity
+from app.services.llm.groq_embedding_service import classify_text_via_groq
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +24,6 @@ CATEGORY_CONTEXTS = {
     "Healthcare": "hospital clinic medical doctor pharmacy medicine healthcare diagnostic lab",
     "Utilities": "electricity water gas utility recharge broadband internet mobile postpaid dth",
     "Home Improvement": "sanitary hardware tiles cement steel plumbing construction electrical furniture home renovation"
-}
-
-# --------------------------------------------------
-# PRECOMPUTED CATEGORY EMBEDDINGS (Computed once on app load via Groq API)
-# --------------------------------------------------
-CATEGORY_EMBEDDINGS = {
-    category: get_groq_embedding(context)
-    for category, context in CATEGORY_CONTEXTS.items()
 }
 
 # --------------------------------------------------
@@ -117,32 +107,18 @@ def categorize_transaction(db: Session, user_id: int, message: str, merchant: st
         return {"category": "Transfer", "confidence": 0.99, "source": "person_rule"}
 
     # --------------------------------------------------
-    # SEMANTIC AI (Groq API Cloud Driven)
+    # SEMANTIC AI (Groq Llama 3.3 Direct Classification)
     # --------------------------------------------------
-    scores = {}
-    message_embedding = get_groq_embedding(message)
-    merchant_embedding = get_groq_embedding(merchant) if merchant != "Unknown" else None
-
-    for category in CATEGORY_CONTEXTS:
-        category_embedding = CATEGORY_EMBEDDINGS[category]
-        msg_score = cosine_similarity(message_embedding, category_embedding)
-        merchant_score = cosine_similarity(merchant_embedding, category_embedding) if merchant_embedding is not None else 0.0
-        
-        intent_bonus = 0.0
-        if intent == "salary" and category == "Income": intent_bonus += 0.4
-        elif intent == "subscription" and category == "Entertainment": intent_bonus += 0.3
-        elif intent == "shopping" and category == "Shopping": intent_bonus += 0.3
-        elif intent == "food" and category == "Food": intent_bonus += 0.4
-        elif intent == "travel" and category == "Travel": intent_bonus += 0.3
-        elif intent == "bill" and category == "Bills": intent_bonus += 0.3
-        elif intent == "transfer" and category == "Transfer": intent_bonus += 0.1
-
-        scores[category] = (0.25 * float(msg_score)) + (0.55 * float(merchant_score)) + (0.20 * intent_bonus)
-
-    best_category = max(scores, key=scores.get)
-    confidence = float(scores[best_category])
-    if confidence < 0.35:
-        best_category = "Others"
+    categories_list = list(CATEGORY_CONTEXTS.keys())
+    
+    # Analyze the vendor name if known, otherwise fallback to the full SMS message
+    target_text = merchant if merchant != "Unknown" else message
+    
+    # Let Llama 3.3 determine the category match natively
+    best_category = classify_text_via_groq(target_text, categories_list)
+    
+    # Assign a predictable high-confidence layout for clear selections
+    confidence = 0.95 if best_category != "Others" else 0.30
 
     # 6. SAVE HIGH CONFIDENCE RESULT
     if merchant != "Unknown" and confidence >= 0.60 and best_category not in ["Transfer", "Others"] and not is_person_name(merchant):
