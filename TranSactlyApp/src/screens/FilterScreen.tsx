@@ -199,7 +199,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const handleVisitWebsite = async () => {
-  const url = 'https://transactly.ai';
+  const url = 'https://centfluence-frontend.vercel.app/';
 
   const supported = await Linking.canOpenURL(url);
 
@@ -1874,7 +1874,7 @@ const FilterScreen: React.FC = () => {
                   size={12}
                   color={R.textTertiary}
                 />
-                <Text style={inStyles.cardLabel}>REcent TRANSACTIONS</Text>
+                <Text style={inStyles.cardLabel}>RECENT TRANSACTIONS</Text>
                 <Text style={styles.txCountPill}>
                   {(transactions ?? []).length} total
                 </Text>
