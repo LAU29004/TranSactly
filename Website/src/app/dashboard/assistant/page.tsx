@@ -1,16 +1,20 @@
 "use client";
-import { useRouter } from "next/navigation";
+
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import styles from "../Dashboard.module.css";
 import Sidebar from "../../../components/Sidebar";
 import AIAssistantWidget from "../assistant/AIAssistantWidget";
-import { useSearchParams } from "next/navigation";
 import { auth } from "@/utils/auth";
 import { useUser } from "../../../hooks/useUser";
-export default function AIAssistantPage() {
+
+// 1. Internal content component that uses browser search parameters safely
+function AssistantContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get("prompt") ?? "";
   const { data: user } = useUser();
+
   return (
     <div className={styles["db-root"]}>
       <div className={styles["db-dot-field"]} />
@@ -84,5 +88,14 @@ export default function AIAssistantPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// 2. Default export wrapper component adding the Next.js production boundary
+export default function AIAssistantPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24, color: "var(--navy)" }}>Loading assistant dashboard...</div>}>
+      <AssistantContent />
+    </Suspense>
   );
 }
