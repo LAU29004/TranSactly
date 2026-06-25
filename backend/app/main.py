@@ -82,9 +82,9 @@ app.add_middleware(
     SecurityHeadersMiddleware
 )
 
-Base.metadata.create_all(
-    bind=engine
-)
+# Base.metadata.create_all(
+#     bind=engine
+# )
 
 app.state.limiter = limiter
 
