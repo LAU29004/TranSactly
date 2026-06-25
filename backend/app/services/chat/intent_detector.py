@@ -1,30 +1,11 @@
-from functools import lru_cache
 import logging
-from sentence_transformers import SentenceTransformer, util
-from app.config.settings import settings
+from app.services.llm.groq_embedding_service import get_groq_embedding, cosine_similarity
 
 logger = logging.getLogger(__name__)
 
 # --------------------------------------------------
-# LAZY LOADING HELPERS
+# INTENT DICTIONARY
 # --------------------------------------------------
-
-@lru_cache(maxsize=1)
-def get_intent_model():
-    logger.info("Initializing Intent SentenceTransformer model (Lazy Loaded)...")
-    return SentenceTransformer(settings.MODEL_NAME)
-
-
-@lru_cache(maxsize=1)
-def get_precomputed_intent_embeddings():
-    model = get_intent_model()
-    logger.info("Precomputing intent dictionary arrays...")
-    return {
-        intent: model.encode(examples, convert_to_tensor=True)
-        for intent, examples in INTENT_EXAMPLES.items()
-    }
-
-
 INTENT_EXAMPLES = {
     "spending": ["where am i spending most", "show spending", "show expenses", "where is my money going", "highest expense", "top spending category", "what did i spend on"],
     "categories": ["show categories", "show spending categories", "list categories", "breakdown by category", "how are my expenses distributed"],
@@ -35,18 +16,28 @@ INTENT_EXAMPLES = {
     "merchant": ["where do i spend most", "top merchant", "highest merchant spending", "which merchant takes most money"],
 }
 
+# --------------------------------------------------
+# PRECOMPUTED INTENT EMBEDDINGS (Computed once on app load via Groq API)
+# --------------------------------------------------
+INTENT_EMBEDDINGS = {
+    intent: [get_groq_embedding(example) for example in examples]
+    for intent, examples in INTENT_EXAMPLES.items()
+}
+
+# --------------------------------------------------
+# DETECT INTENT ENGINE
+# --------------------------------------------------
 def detect_financial_intent(query: str):
-    # Access the cached model and matrix computations on-demand
-    model = get_intent_model()
-    intent_embeddings = get_precomputed_intent_embeddings()
-
-    query_embedding = model.encode(query, convert_to_tensor=True)
+    # Fetch the embedding for the user's incoming query
+    query_embedding = get_groq_embedding(query)
+    
     best_intent = "unknown"
-    best_score = 0
+    best_score = 0.0
 
-    for intent, embeddings in intent_embeddings.items():
-        similarity = util.cos_sim(query_embedding, embeddings)
-        score = float(similarity.max())
+    for intent, embeddings in INTENT_EMBEDDINGS.items():
+        # Calculate the pure-python cosine similarity for each example phrase variant
+        scores = [cosine_similarity(query_embedding, emb) for emb in embeddings]
+        score = max(scores) if scores else 0.0
 
         if score > best_score:
             best_score = score

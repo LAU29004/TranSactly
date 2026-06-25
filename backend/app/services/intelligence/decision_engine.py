@@ -1,37 +1,15 @@
-from functools import lru_cache
 import logging
-from sentence_transformers import SentenceTransformer, util
 from sqlalchemy.orm import Session
 
-from app.config.settings import settings
 from app.repositories.merchant_repository import get_merchant_category, save_merchant_memory
 from app.services.intelligence.merchant_priors import MERCHANT_PRIORS
 from app.services.llm.groq_llm_service import classify_merchant
 from app.services.intelligence.merchant_intelligence import MERCHANT_INTELLIGENCE
 
+# Clean API Integration
+from app.services.llm.groq_embedding_service import get_groq_embedding, cosine_similarity
+
 logger = logging.getLogger(__name__)
-
-# --------------------------------------------------
-# LAZY LOADING HELPERS
-# --------------------------------------------------
-
-@lru_cache(maxsize=1)
-def get_embedding_model():
-    """Loads the model only when explicitly called and caches it."""
-    logger.info("Initializing SentenceTransformer model (Lazy Loaded)...")
-    return SentenceTransformer(settings.MODEL_NAME)
-
-
-@lru_cache(maxsize=1)
-def get_precomputed_category_embeddings():
-    """Precomputes category embeddings once, using the lazy-loaded model."""
-    model = get_embedding_model()
-    logger.info("Precomputing category embeddings...")
-    return {
-        category: model.encode(context, convert_to_tensor=True)
-        for category, context in CATEGORY_CONTEXTS.items()
-    }
-
 
 # --------------------------------------------------
 # CATEGORY KNOWLEDGE
@@ -48,6 +26,14 @@ CATEGORY_CONTEXTS = {
     "Healthcare": "hospital clinic medical doctor pharmacy medicine healthcare diagnostic lab",
     "Utilities": "electricity water gas utility recharge broadband internet mobile postpaid dth",
     "Home Improvement": "sanitary hardware tiles cement steel plumbing construction electrical furniture home renovation"
+}
+
+# --------------------------------------------------
+# PRECOMPUTED CATEGORY EMBEDDINGS (Computed once on app load via Groq API)
+# --------------------------------------------------
+CATEGORY_EMBEDDINGS = {
+    category: get_groq_embedding(context)
+    for category, context in CATEGORY_CONTEXTS.items()
 }
 
 # --------------------------------------------------
@@ -131,19 +117,16 @@ def categorize_transaction(db: Session, user_id: int, message: str, merchant: st
         return {"category": "Transfer", "confidence": 0.99, "source": "person_rule"}
 
     # --------------------------------------------------
-    # SEMANTIC AI (Lazy Loaded Models Used Here Only)
+    # SEMANTIC AI (Groq API Cloud Driven)
     # --------------------------------------------------
-    model = get_embedding_model()
-    category_embeddings = get_precomputed_category_embeddings()
-
     scores = {}
-    message_embedding = model.encode(message, convert_to_tensor=True)
-    merchant_embedding = model.encode(merchant, convert_to_tensor=True) if merchant != "Unknown" else None
+    message_embedding = get_groq_embedding(message)
+    merchant_embedding = get_groq_embedding(merchant) if merchant != "Unknown" else None
 
     for category in CATEGORY_CONTEXTS:
-        category_embedding = category_embeddings[category]
-        msg_score = util.cos_sim(message_embedding, category_embedding)[0][0]
-        merchant_score = util.cos_sim(merchant_embedding, category_embedding)[0][0] if merchant_embedding is not None else 0.0
+        category_embedding = CATEGORY_EMBEDDINGS[category]
+        msg_score = cosine_similarity(message_embedding, category_embedding)
+        merchant_score = cosine_similarity(merchant_embedding, category_embedding) if merchant_embedding is not None else 0.0
         
         intent_bonus = 0.0
         if intent == "salary" and category == "Income": intent_bonus += 0.4
