@@ -1217,7 +1217,7 @@ function DashboardPage() {
               }}
             >
               <QRCode
-                value="https://transactly.ai/downloads/transactly.apk"
+                value="https://github.com/LAU29004/TranSactly/releases/download/v1.0.0/app-release.apk"
                 size={220}
               />
             </div>
