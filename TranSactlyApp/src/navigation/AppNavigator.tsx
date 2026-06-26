@@ -678,7 +678,6 @@ const AppNavigator: React.FC = () => {
           setInitialState(JSON.parse(savedState));
         }
       } catch (e) {
-        console.log('NAV RESTORE ERROR:', e);
       } finally {
         setIsReady(true);
       }
@@ -701,7 +700,6 @@ const AppNavigator: React.FC = () => {
             JSON.stringify(state),
           );
         } catch (e) {
-          console.log('NAV SAVE ERROR:', e);
         }
       }}
     >

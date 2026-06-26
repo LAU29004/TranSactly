@@ -14,10 +14,6 @@ export const saveToken = async (
 
   } catch (error) {
 
-    console.log(
-      'TOKEN SAVE ERROR:',
-      error,
-    );
   }
 };
 
@@ -29,11 +25,6 @@ export const getToken = async () => {
     );
 
   } catch (error) {
-
-    console.log(
-      'TOKEN READ ERROR:',
-      error,
-    );
 
     return null;
   }
@@ -48,9 +39,5 @@ export const clearToken = async () => {
 
   } catch (error) {
 
-    console.log(
-      'TOKEN DELETE ERROR:',
-      error,
-    );
   }
 };

@@ -1595,7 +1595,6 @@ const FilterScreen: React.FC = () => {
       Alert.alert('Success', 'Excel exported successfully');
       await FileViewer.open(filePath);
     } catch (error) {
-      console.error('EXPORT ERROR', error);
       Alert.alert('Export Failed', 'Unable to export Excel file');
     }
   };
@@ -1656,7 +1655,6 @@ const FilterScreen: React.FC = () => {
       setInsights(insightsResponse);
       setTransactions(transactionsResponse.transactions ?? []);
     } catch (err: any) {
-      console.error(err);
     } finally {
       setLoading(false);
     }

@@ -1685,9 +1685,7 @@ export default function AnalyticsTab({
   if (!analytics.data) {
     return null;
   }
-  console.log("MERCHANTS", merchantIntelligence.data);
 
-  console.log("AI CLASSIFICATION", aiClassification.data);
   return (
     <div>
       <div

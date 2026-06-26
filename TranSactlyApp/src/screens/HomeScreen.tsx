@@ -84,19 +84,15 @@ const HomeScreen: React.FC = () => {
   const heroSlide = useRef(new Animated.Value(16)).current;
   const [loadingMore, setLoadingMore] = useState(false);
   // Load transactions on mount
-  // console.log(
-  //   'HOME TRANSACTIONS:',
-  //   transactions,
-  // );
+
   const loadHomeData = async (period: ComparisonPeriod) => {
     try {
       const { startDate, endDate } = getDateRange(period);
 
-      console.log('FETCHING HOME:', period);
 
       const data = await fetchHomeData(startDate, endDate, page);
 
-      console.log('HOME API:', data);
+
 
       setHomeData((prev: any) => {
         if (!prev || page === 1) {
@@ -115,9 +111,8 @@ const HomeScreen: React.FC = () => {
           ],
         };
       });
-      console.log('MONTHLY TREND:', data.monthlyTrend);
     } catch (error) {
-      console.log('HOME API ERROR:', error);
+
     } finally {
       setLoadingMore(false);
     }
@@ -164,10 +159,6 @@ const handleExportExcel = async () => {
 
   } catch (error) {
 
-    console.log(
-      'EXPORT ERROR:',
-      error,
-    );
   }
 };
   const handleRefresh = async () => {
@@ -179,7 +170,6 @@ const handleExportExcel = async () => {
       await loadHomeData(comparisonPeriod);
       await loadInsights(comparisonPeriod);
     } catch (error) {
-      console.log('REFRESH ERROR:', error);
     } finally {
       setRefreshing(false);
     }
@@ -190,11 +180,9 @@ const handleExportExcel = async () => {
 
       const data = await fetchInsights(new Date(startDate), new Date(endDate));
 
-      console.log('INSIGHTS API:', data);
 
       setInsightsData(data);
     } catch (error) {
-      console.log('INSIGHTS ERROR:', error);
     }
   };
   useEffect(() => {
@@ -210,7 +198,7 @@ const handleExportExcel = async () => {
   useEffect(() => {
     const loadTransactions = async () => {
       try {
-        console.log('PERMISSION:', permState);
+
 
         if (permState !== 'granted') {
           return;
@@ -222,12 +210,10 @@ const handleExportExcel = async () => {
 
         const parsed = await parseSMSIntoTransactions();
 
-        console.log('PARSED SMS COUNT:', parsed.length);
         if (parsed.length > 0) {
           setTransactions(parsed);
         }
       } catch (e) {
-        console.log('HOME SMS LOAD ERROR:', e);
       }
     };
 
@@ -268,7 +254,6 @@ const handleExportExcel = async () => {
   }, []);
 
   const handleRequestPermission = useCallback(async () => {
-    console.log('REQUEST BUTTON CLICKED');
 
     if (permState === 'denied') {
       const { Linking } = require('react-native');
@@ -282,7 +267,6 @@ const handleExportExcel = async () => {
 
     const result = await requestSmsPermission();
 
-    console.log('SMS RESULT:', result);
 
     setPermState(result);
   }, [permState]);

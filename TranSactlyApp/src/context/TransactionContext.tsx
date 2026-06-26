@@ -25,7 +25,6 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
           setTransactions(JSON.parse(cached));
         }
       } catch (e) {
-        console.log('TRANSACTION CACHE LOAD ERROR:', e);
       }
     };
 
@@ -37,7 +36,6 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         await secureSet(TRANSACTION_CACHE_KEY, transactions);
       } catch (e) {
-        console.log('TRANSACTION CACHE SAVE ERROR:', e);
       }
     };
 

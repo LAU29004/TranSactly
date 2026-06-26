@@ -132,12 +132,6 @@ const sms =
     endDate,
   );
 
-    console.log(
-  'FILTERED SMS COUNT:',
-  sms.length,
-);
-
-
 const uniqueMap = new Map();
 
 sms.forEach((msg: any) => {
@@ -160,11 +154,6 @@ const rawMessages = Array.from(
 
     const response = await analyzeSMS(
       rawMessages,
-    );
-
-    console.log(
-      'BACKEND RESPONSE:',
-      JSON.stringify(response, null, 2),
     );
 
     const analyzed =
@@ -194,11 +183,6 @@ const rawMessages = Array.from(
     );
 
   } catch (error) {
-
-    console.log(
-      'SMS PARSE ERROR:',
-      error,
-    );
 
     return [];
   }

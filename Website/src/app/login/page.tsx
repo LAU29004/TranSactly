@@ -17,7 +17,6 @@ export default function LoginPage() {
   }, []);
   const router = useRouter();
   const handleGoogleSuccess = async (credentialResponse: any) => {
-    console.log("GOOGLE RESPONSE:", credentialResponse);
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/google`,
@@ -25,7 +24,6 @@ export default function LoginPage() {
           id_token: credentialResponse.credential,
         },
       );
-      console.log(response);
 
       localStorage.setItem("auth_token", response.data.access_token);
       localStorage.setItem("refresh_token", response.data.refresh_token);
@@ -41,7 +39,6 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: any) {
-      console.error(err.response?.data);
     }
   };
   const [done, setDone] = useState(false);
@@ -221,7 +218,6 @@ export default function LoginPage() {
                     <GoogleLogin
                       onSuccess={handleGoogleSuccess}
                       onError={() => {
-                        console.log("Google Login Failed");
                       }}
                     />
                   ))}

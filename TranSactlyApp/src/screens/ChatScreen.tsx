@@ -658,9 +658,6 @@ const ChatScreen: React.FC = () => {
       SESSIONS_KEY,
     );
 
-    console.log(
-      'CHAT SESSIONS CLEARED',
-    );
   };
 
   clearChatSessions();
@@ -988,7 +985,6 @@ const ChatScreen: React.FC = () => {
           timestamp: Date.now(),
         };
         setMessages(prev => [...prev, errorMsg]);
-        console.log('AI CHAT ERROR:', err);
       } finally {
         clearInterval(timer);
         setIsTyping(false);
@@ -1044,10 +1040,6 @@ const ChatScreen: React.FC = () => {
   }
 
   const inputPaddingBottom = Math.max(insets.bottom, 12);
-  console.log(
-  'MESSAGE IDS',
-  messages.map(m => m.id),
-);
   return (
     <SafeAreaView style={g.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />

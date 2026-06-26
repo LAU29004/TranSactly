@@ -36,8 +36,6 @@ const LoginScreen: React.FC = () => {
       }
 
       if (!idToken) {
-        console.log('NO ID TOKEN');
-
         return;
       }
 
@@ -53,10 +51,9 @@ const LoginScreen: React.FC = () => {
       });
 
       const token = await getToken();
-      console.log('TOKEN:', token);
+
       navigation.replace('MainTabs');
     } catch (error) {
-      console.log('GOOGLE LOGIN ERROR', error);
     }
   };
   const navigation = useNavigation<any>();

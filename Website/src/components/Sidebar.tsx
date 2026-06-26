@@ -115,7 +115,6 @@ export default function Sidebar({
         const data = await userService.getMe();
         setUser(data);
       } catch (error) {
-        console.error(error);
       } finally {
         setLoadingUser(false);
       }

@@ -89,7 +89,6 @@ export default function AIAssistantWidget({
           );
         }
       } catch (err) {
-        console.error("Failed to load chat history", err);
       }
     }
 
