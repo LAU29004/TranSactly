@@ -182,7 +182,7 @@ export default function Hero() {
 
             <div className={styles.qrWrapper}>
               <QRCode
-                value="https://github.com/LAU29004/TranSactly/releases/download/v1.0.0/app-release.apk"
+                value="https://github.com/LAU29004/TranSactly/releases/download/v1.0.0/CentFluence-v1.0.0.apk"
                 size={220}
               />
             </div>
