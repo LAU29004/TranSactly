@@ -152,18 +152,16 @@ const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/aut
                 boxShadow: "3px 3px 0 var(--ink)",
               }}
             >
-              <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
-                <path
-                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                  stroke="#F5A800"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+          <Image
+            src="/screenLogo.png"
+            alt="Centfluence Logo"
+            width={48}
+            height={48}
+            style={{ objectFit: 'contain' }}
+          />
             </div>
             <span className={styles["login-logo-name"]}>
-              fin<span className={styles["login-logo-dot"]}>orio</span>
+              cent<span className={styles["login-logo-dot"]}>fluence</span>
             </span>
           </Link>
 
