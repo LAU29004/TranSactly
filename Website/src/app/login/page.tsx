@@ -19,7 +19,8 @@ export default function LoginPage() {
   const handleGoogleSuccess = async (credentialResponse: any) => {
     console.log("GOOGLE RESPONSE:", credentialResponse);
     try {
-const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google`,
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/google`,
         {
           id_token: credentialResponse.credential,
         },
@@ -152,13 +153,13 @@ const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/aut
                 boxShadow: "3px 3px 0 var(--ink)",
               }}
             >
-          <Image
-            src="/screenLogo.png"
-            alt="Centfluence Logo"
-            width={48}
-            height={48}
-            style={{ objectFit: 'contain' }}
-          />
+              <Image
+                src="/screenLogo.png"
+                alt="Centfluence Logo"
+                width={48}
+                height={48}
+                style={{ objectFit: "contain" }}
+              />
             </div>
             <span className={styles["login-logo-name"]}>
               cent<span className={styles["login-logo-dot"]}>fluence</span>
