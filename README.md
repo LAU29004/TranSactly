@@ -52,9 +52,9 @@
 
 | Component | URL |
 |-----------|-----|
-| 🌍 Website | [centfluence.vercel.app](https://centfluence.vercel.app) |
-| ⚙️ Backend API | [centfluence-api.onrender.com](https://centfluence-api.onrender.com) |
-| 📱 Android APK | Not publicly distributed — see [Demo Video](#-demo-video) |
+| 🌍 Website | [centfluence.vercel.app](https://centfluence-frontend.vercel.app) |
+| ⚙️ Backend API | [centfluence-api.onrender.com](https://centfluence-backend.onrender.com) |
+| 📱 Android APK | Not publicly distributed — see [Demo Video](https://drive.google.com/file/d/1FsbMqtaUgaHRyhQf4GXgGETUT0OEIRNV/view?usp=drive_link) |
 
 > **Note:** Due to Google Play Protect restrictions on SMS-reading applications, the Android APK is not publicly distributed. A full walkthrough video is provided below.
 
@@ -673,9 +673,9 @@ Configuring rate limiting that works across Render's stateless instances (no sha
 **Laukik**
 *Computer Engineering Student | Full Stack & AI Developer*
 
-[![GitHub](https://img.shields.io/badge/GitHub-@laukik-181717?style=for-the-badge&logo=github)](https://github.com/laukik)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/laukik)
-[![Email](https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail)](mailto:your@email.com)
+[![GitHub](https://img.shields.io/badge/GitHub-@laukik-181717?style=for-the-badge&logo=github)](https://github.com/LAU29004)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/laukikwaikar)
+[![Email](https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail)](mailto:laukikwaikar@email.com)
 
 *Building production-ready full-stack systems at the intersection of AI and finance.*
 
