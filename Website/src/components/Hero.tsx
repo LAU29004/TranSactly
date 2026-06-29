@@ -79,7 +79,7 @@ export default function Hero() {
             <button
               onClick={() =>
                 window.open(
-                  "https://youtube.com/watch?v=YOUR_VIDEO_ID",
+                  "https://drive.google.com/file/d/1FsbMqtaUgaHRyhQf4GXgGETUT0OEIRNV/view?usp=drive_link",
                   "_blank",
                 )
               }
@@ -180,12 +180,22 @@ export default function Hero() {
             <h3>Download centfluence</h3>
             <p>Scan this QR code on your Android phone.</p>
 
-            <div className={styles.qrWrapper}>
               <QRCode
                 value="https://github.com/LAU29004/TranSactly/releases/download/v1.0.0/CentFluence-v1.0.0.apk"
                 size={220}
               />
-            </div>
+              Scan QR to Download for Android
+              <div className={styles.demoNotice}>
+                Due to Google Play Service restrictions, the app demo video is
+                only available below.{" "}
+                <a
+                  href="https://drive.google.com/file/d/1FsbMqtaUgaHRyhQf4GXgGETUT0OEIRNV/view?usp=drive_link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Watch Demo Video
+                </a>
+              </div>
           </div>
         </div>
       )}

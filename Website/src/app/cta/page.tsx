@@ -42,7 +42,18 @@ export default function CTA() {
                 value="https://github.com/LAU29004/TranSactly/releases/download/v1.0.0/CentFluence-v1.0.0.apk"
                 size={220}
               />
-                Scan QR to Download for Android
+              Scan QR to Download for Android
+              <div className={styles.demoNotice}>
+                Due to Google Play Service restrictions, the app demo video is
+                only available below.{" "}
+                <a
+                  href="https://drive.google.com/file/d/1FsbMqtaUgaHRyhQf4GXgGETUT0OEIRNV/view?usp=drive_link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Watch Demo Video
+                </a>
+              </div>
             </div>
 
             {/* Trust badges */}

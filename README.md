@@ -67,15 +67,15 @@
 | 🏠 Landing Page | ![Landing Page](screenshots/landing.png) |
 | 🔐 Google Login | ![Google Login](screenshots/login.png) |
 | 📊 Dashboard | ![Dashboard](screenshots/dashboard.png) |
+📊 Dashboard | ![Mobile Dashboard](screenshots/mobile_dashboard.jpg) |
 | 📈 Analytics | ![Analytics](screenshots/analytics.png) |
 | 🏪 Merchant Intelligence | ![Merchant Intelligence](screenshots/merchants.png) |
 | 🤖 AI Chat Assistant | ![AI Chat](screenshots/ai_chat.png) |
+| 🤖 AI Chat Assistant Mobile | ![AI Chat Mobile](screenshots/ai_chat_mobile.jpg) |
 | 📋 Transaction History | ![Transactions](screenshots/transactions.png) |
-| 📱 SMS Analysis | ![SMS Analysis](screenshots/sms.png) |
+| 📱 SMS Analysis | ![SMS Analysis](screenshots/sms.jpg) |
 | 📤 Export | ![Export](screenshots/export.png) |
-| 🌐 Responsive Website | ![Website](screenshots/website.png) |
-| 🌑 Dark Theme | ![Dark Theme](screenshots/dark_theme.png) |
-| 👤 Profile | ![Profile](screenshots/profile.png) |
+| 👤 Profile | ![Profile](screenshots/profile.jpg) |
 
 ---
 
@@ -83,7 +83,7 @@
 
 > Because CentFluence reads banking SMS messages, it requires SMS permissions that trigger Google Play Protect warnings, preventing standard APK distribution. A full demonstration video is available instead.
 
-📹 **[Watch Full Demo Video →](https://your-demo-video-link.com)**
+📹 **[Watch Full Demo Video →]https://drive.google.com/file/d/1FsbMqtaUgaHRyhQf4GXgGETUT0OEIRNV/view?usp=drive_link**
 
 The video covers: Google Login → SMS Permission → Transaction Parsing → Dashboard → Analytics → AI Chat → Export.
 
