@@ -199,12 +199,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const handleVisitWebsite = async () => {
-  const url = 'https://centfluence-frontend.vercel.app/';
-
-  const supported = await Linking.canOpenURL(url);
-
-  if (supported) {
-    await Linking.openURL(url);
+  try {
+    await Linking.openURL('https://centfluence-frontend.vercel.app');
+  } catch (e) {
+    console.log(e);
   }
 };
 

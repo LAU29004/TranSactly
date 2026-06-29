@@ -261,7 +261,7 @@ def get_analytics(
             "kpi": {
 
                 "avgDailySpend":
-                f"${avg_daily_spend:.2f}",
+                f"₹{avg_daily_spend:.2f}",
 
                 "topCategory":
                 top_category,
