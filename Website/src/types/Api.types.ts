@@ -49,6 +49,52 @@ export interface DashboardResponse {
   data:   DashboardPeriodData
 }
 
+// ─── BUDGETS ─────────────────────────────────────────────────────────────────
+
+export type BudgetStatus = 'active' | 'completed' | 'exceeded'
+
+export interface BudgetCategoryLimit {
+  category: string   // must match Transaction.category exactly
+  limit:    number
+}
+
+export interface Budget {
+  id:              string
+  name:            string
+  startDate:       string     // ISO
+  endDate:         string     // ISO
+  totalAmount:     number
+  categories:      BudgetCategoryLimit[]
+  alertThresholds: number[]   // e.g. [80, 100] as % of limit
+  emailAlerts:     boolean
+  status:          BudgetStatus
+}
+
+export type CreateBudgetPayload = Omit<Budget, 'id' | 'status'>
+
+export interface BudgetCategoryProgress {
+  category:    string
+  limit:       number
+  spent:       number
+  percentUsed: number
+}
+
+export interface BudgetSummary {
+  budget:       Budget
+  totalSpent:   number
+  percentUsed:  number
+  daysLeft:     number
+  categories:   BudgetCategoryProgress[]
+  plannedPie:   CategoryPieItem[]   // value = limit
+  actualPie:    CategoryPieItem[]   // value = spent
+}
+
+export interface BudgetsResponse {
+  budgets:     Budget[]
+  totalBudget: number
+  totalSpent:  number
+}
+
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 
 export interface Transaction {

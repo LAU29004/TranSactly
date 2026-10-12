@@ -1,0 +1,6 @@
+
+scripts/budget-mailer.mjs
+scripts/budgets.json
+scripts/.mail-state.json
+scripts/previews/
+.env.mailer

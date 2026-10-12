@@ -6,6 +6,7 @@ export type Tab =
   | "transactions"
   | "analytics"
   | "subscriptions"
+  | "budgets"
   | "assistant";
 import { userService } from "../services/userService";
 import Image from "next/image";
@@ -74,6 +75,23 @@ const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
       >
         <rect x="1.5" y="3" width="13" height="10" rx="2" />
         <path d="M1.5 6.5h13M4 9.5h3" />
+      </svg>
+    ),
+  },
+    {
+    id: "budgets",
+    label: "Budgets",
+    icon: (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <path d="M8 1.5a6.5 6.5 0 106.5 6.5H8V1.5z" strokeLinejoin="round" />
+        <path d="M10 1.8a6.5 6.5 0 014.2 4.2H10V1.8z" />
       </svg>
     ),
   },

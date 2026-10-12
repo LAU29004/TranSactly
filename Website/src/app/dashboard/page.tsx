@@ -35,6 +35,7 @@ import TransactionsTab from "./tabs/TransactionsTab";
 import SubscriptionsTab from "./SubscriptionsTab";
 import AnalyticsTab from "./tabs/AnalyticsTab";
 import styles from "./Dashboard.module.css";
+import BudgetsTab from "./tabs/BudgetsTab";
 
 // ─── STATIC LOOKUP TABLES (non-data — styling only) ──────────────────────────
 const PERIOD_LABELS: Record<Period, string> = {
@@ -909,6 +910,7 @@ function DashboardPage() {
     "transactions",
     "analytics",
     "subscriptions",
+    "budgets",
   ];
   
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -1004,13 +1006,15 @@ function DashboardPage() {
                 paddingBottom: 8,
               }}
             >
-              {activeTab === "overview"
-                ? "Welcome Back, Alex"
-                : activeTab === "transactions"
-                  ? "Transactions"
-                  : activeTab === "analytics"
-                    ? "Analytics"
-                    : "Subscriptions"}
+{activeTab === "overview"
+  ? "Welcome Back, Alex"
+  : activeTab === "transactions"
+    ? "Transactions"
+    : activeTab === "analytics"
+      ? "Analytics"
+      : activeTab === "budgets"
+        ? "Budgets"
+        : "Subscriptions"}
               <span
                 style={{
                   position: "absolute",
@@ -1031,13 +1035,15 @@ function DashboardPage() {
                 letterSpacing: "0.04em",
               }}
             >
-              {activeTab === "overview"
-                ? "Your AI Financial Copilot"
-                : activeTab === "transactions"
-                  ? "All your recent financial activity"
-                  : activeTab === "analytics"
-                    ? "Trends, patterns, and deeper financial insights"
-                    : "Track recurring payments and renewal schedules"}
+{activeTab === "overview"
+  ? "Your AI Financial Copilot"
+  : activeTab === "transactions"
+    ? "All your recent financial activity"
+    : activeTab === "analytics"
+      ? "Trends, patterns, and deeper financial insights"
+      : activeTab === "budgets"
+        ? "Set spending limits and track them by category"
+        : "Track recurring payments and renewal schedules"}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1111,6 +1117,9 @@ function DashboardPage() {
         
         {/* ════════ SUBSCRIPTIONS ════════ */}
         {activeTab === "subscriptions" && <SubscriptionsTab />}
+
+        {/* ════════ BUDGETS ════════ */}
+{activeTab === "budgets" && <BudgetsTab />}
       </main>
 
       {/* ════════ AUTOMATED BANK LIVE SYNC POPUP MODAL ════════ */}
